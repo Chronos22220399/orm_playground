@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/Ess/Code/orm_playground/out/Debug",
+  "command": "/usr/bin/c++ -DFMT_SHARED  -g -std=c++20 -o CMakeFiles/orm.dir/src/main.cpp.o -c /home/Ess/Code/orm_playground/src/main.cpp",
+  "file": "/home/Ess/Code/orm_playground/src/main.cpp",
+  "output": "CMakeFiles/orm.dir/src/main.cpp.o"
+}
+]

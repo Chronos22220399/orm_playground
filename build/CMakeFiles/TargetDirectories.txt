@@ -1,0 +1,3 @@
+/home/Ess/Code/orm_playground/build/CMakeFiles/orm.dir
+/home/Ess/Code/orm_playground/build/CMakeFiles/edit_cache.dir
+/home/Ess/Code/orm_playground/build/CMakeFiles/rebuild_cache.dir
