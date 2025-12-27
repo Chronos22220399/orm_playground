@@ -19,5 +19,7 @@ message(STATUS "CXX Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 find_package(fmt REQUIRED CONFIG)
 
 add_executable(${exname} src/main.cpp)
+# add_executable(${exname} src/schema.cpp)
+
 
 target_link_libraries(${exname} PRIVATE fmt::fmt)
