@@ -6,5 +6,5 @@ CXX_DEFINES = -DFMT_SHARED
 
 CXX_INCLUDES = -I/home/Ess/Code/orm_playground/include
 
-CXX_FLAGS = -std=c++20
+CXX_FLAGS = -g -std=c++20
 

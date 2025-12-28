@@ -21,5 +21,6 @@ find_package(fmt REQUIRED CONFIG)
 add_executable(${exname} src/main.cpp)
 # add_executable(${exname} src/schema.cpp)
 
+target_include_directories(${exname} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(${exname} PRIVATE fmt::fmt)
