@@ -1,8 +1,4 @@
-#include <fmt/color.h>
-#include <fmt/format.h>
-#include <iostream>
-#include <type_traits>
-#include <vector>
+#include <core.hpp>
 
 template <typename> inline constexpr bool always_false = false;
 

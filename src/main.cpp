@@ -1,50 +1,94 @@
-#include <array>
-#include <cassert>
-#include <defines.h>
-#include <fmt/color.h>
-#include <fmt/format.h>
-#include <iostream>
-#include <string>
-#include <thread_db.h>
-#include <utility>
-#include <vector>
+#include <core.hpp>
 
-#define ESS_FUNC_LOG() (fmt::println("{}", ESS_FUNCTION_SIGNATURE))
+template <typename T> struct AccumulateTraits;
 
-template <typename T, unsigned N> std::size_t len(T (&)[N]) {
-  ESS_FUNC_LOG();
-  return N;
-}
-
-template <typename T>
-auto len(T const &t) -> decltype((void)(t.size()), T::size_type) {
-  ESS_FUNC_LOG();
-  return t.size();
-}
-
-template <typename T> void len(T &&t) { ESS_FUNC_LOG(); }
-
-struct TestFunc {
-  using size_type = std::size_t;
-  size_type size() const { return {}; }
+template <> struct AccumulateTraits<char> {
+  using AccT = int;
+  inline static AccT const zero = 0;
+};
+template <> struct AccumulateTraits<short> {
+  using AccT = int;
+  inline static AccT const zero = 0;
+};
+template <> struct AccumulateTraits<int> {
+  using AccT = long;
+  inline static AccT const zero = 0;
+};
+template <> struct AccumulateTraits<unsigned int> {
+  using AccT = unsigned long;
+  inline static AccT const zero = 0;
+};
+template <> struct AccumulateTraits<float> {
+  using AccT = double;
+  inline static AccT const zero = 0;
 };
 
-template <typename T>
-auto has_size(int) -> decltype(std::declval<T>().size(), std::true_type{});
+template <typename T1, typename T2> class SumPolicy {
+public:
+  static void accumulate(T1 &total, T2 const &value) { total += value; }
+};
 
-template <typename T> auto has_size(T) -> std::false_type;
-
-template <typename T> void print(T &&t) {
+template <typename T, template <typename, typename> class Policy = SumPolicy,
+          typename AT = AccumulateTraits<T>>
+auto accum(T const *beg, T const *end) {
   ESS_FUNC_LOG();
-  if constexpr (decltype(has_size<T>(std::forward<T>(t)))::value) {
-    fmt::println("{}", t.size());
-  } else {
-    fmt::println("no size");
+  using AccT = typename AT::AccT;
+  AccT res{AT::zero};
+  while (beg != end) {
+    Policy<AccT, AccT>::accumulate(res, *beg);
+    ++beg;
   }
+  return res;
 }
 
+template <typename Iter> auto accum(Iter begin, Iter end) {
+  using VT = std::iterator_traits<Iter>::value_type;
+  VT total{};
+  while (begin != end) {
+    total += *begin;
+    ++begin;
+  }
+  return total;
+}
+
+template <typename T1, typename T2> struct MutPolicy {
+public:
+  static void accumulate(T1 &total, T2 const &value) {
+    if (total == 0)
+      total = 1;
+    total *= value;
+  }
+};
+
+template <typename T> struct TypeSize {
+  static std::size_t const value = sizeof(T);
+};
+
+template <typename T> struct ElemType {};
+
+template <typename T> struct ElemType<std::vector<T>> {
+  using value = T;
+};
+
+template <typename T> struct ElemType<std::deque<T>> {
+  using value = T;
+};
+
+template <typename T> struct RemoveReferenceT {
+  using type = T;
+};
+
+template <typename T> struct RemoveReferenceT<T &> {
+  using type = T;
+};
+
+template <typename T> struct RemoveReferenceT<T *> {
+  using type = T;
+};
+
 int main() {
-  std::vector<int> a;
-  fmt::println("{}", typeid(a).name());
-  print(10);
+  int nums[] = {1, 2, 3, 4, 5};
+  fmt::println("{}", accum(nums, nums + 5));
+  fmt::println("{}", accum<int, MutPolicy>(nums, nums + 5));
+  fmt::println("{}", TypeSize<decltype(nums)>::value);
 }

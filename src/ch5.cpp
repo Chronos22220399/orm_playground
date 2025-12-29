@@ -1,9 +1,4 @@
-#include <cassert>
-#include <deque>
-#include <fmt/color.h>
-#include <fmt/format.h>
-#include <memory>
-#include <type_traits>
+#include <core.hpp>
 
 // template parameters
 

@@ -1,13 +1,4 @@
-#include <array>
-#include <cassert>
-#include <fmt/color.h>
-#include <fmt/format.h>
-#include <functional>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <thread_db.h>
-#include <utility>
+#include <core.hpp>
 
 template <typename T, std::size_t L1, std::size_t L2>
 auto bars(T (&arg1)[L1], T (&arg2)[L2]) {}

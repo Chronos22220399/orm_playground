@@ -5,11 +5,13 @@ project(
   LANGUAGES CXX
 )
 
+
 set(exname orm)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 
 message(STATUS "=== C++ Compiler Info ===")
 message(STATUS "CXX Compiler Path: ${CMAKE_CXX_COMPILER}")
@@ -21,6 +23,37 @@ find_package(fmt REQUIRED CONFIG)
 add_executable(${exname} src/main.cpp)
 # add_executable(${exname} src/schema.cpp)
 
-target_include_directories(${exname} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(
+  ${exname}
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
-target_link_libraries(${exname} PRIVATE fmt::fmt)
+target_link_libraries(
+  ${exname} 
+  PRIVATE
+  fmt::fmt
+)
+
+target_compile_options(
+  ${exname}
+  PRIVATE
+  -O2
+  -fsanitize=address
+  # -save-temps=obj
+  # -Rpass=inline
+)
+
+target_link_options(
+  ${exname}
+  PRIVATE
+  -fsanitize=address
+)
+
+target_precompile_headers(
+  ${exname}
+  PRIVATE
+  include/std.hpp
+  include/core_thirdparties.hpp
+  include/core.hpp
+)

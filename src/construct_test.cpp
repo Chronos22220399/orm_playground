@@ -1,6 +1,4 @@
-#include <cassert>
-#include <fmt/color.h>
-#include <fmt/format.h>
+#include <core.hpp>
 
 class Test {
 public:

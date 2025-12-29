@@ -9,3 +9,5 @@
 #define ESS_FUNCTION_SIGNATURE __func__
 #endif
 #endif
+
+#define ESS_FUNC_LOG() (fmt::println("{}", ESS_FUNCTION_SIGNATURE))

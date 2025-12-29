@@ -1,0 +1,12 @@
+SortIncludes: true
+IncludeBlocks: Preserve
+
+IncludeCategories:
+  - Regex: "^<std.hpp>"
+    Priority: 1
+  - Regex: "^<core_thirdparties.hpp>"
+    Priority: 2
+  - Regex: "^<defines.h>"
+    Priority: 3
+  - Regex: "^<.*>"
+    Priority: 4

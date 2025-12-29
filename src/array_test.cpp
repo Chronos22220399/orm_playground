@@ -1,8 +1,4 @@
-#include <fmt/color.h>
-#include <fmt/format.h>
-#include <iostream>
-#include <type_traits>
-#include <vector>
+#include <core.hpp>
 
 template <typename T> struct MyClass;
 

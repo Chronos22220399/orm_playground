@@ -1,13 +1,4 @@
-#include <array>
-#include <cassert>
-#include <fmt/color.h>
-#include <fmt/format.h>
-#include <functional>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <thread_db.h>
-#include <utility>
+#include <core.hpp>
 
 namespace ess {
 template <size_t N> struct FixedString {
