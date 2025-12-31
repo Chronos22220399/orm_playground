@@ -1,5 +1,9 @@
+#pragma once
+#include <algorithm>
 #include <array>
 #include <cassert>
+#include <deque>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <iterator>
@@ -8,5 +12,6 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>

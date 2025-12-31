@@ -1,94 +1,69 @@
 #include <core.hpp>
 
-template <typename T> struct AccumulateTraits;
+namespace meta {
+template <size_t N> struct FixedString {
+  char m_str[N];
 
-template <> struct AccumulateTraits<char> {
-  using AccT = int;
-  inline static AccT const zero = 0;
-};
-template <> struct AccumulateTraits<short> {
-  using AccT = int;
-  inline static AccT const zero = 0;
-};
-template <> struct AccumulateTraits<int> {
-  using AccT = long;
-  inline static AccT const zero = 0;
-};
-template <> struct AccumulateTraits<unsigned int> {
-  using AccT = unsigned long;
-  inline static AccT const zero = 0;
-};
-template <> struct AccumulateTraits<float> {
-  using AccT = double;
-  inline static AccT const zero = 0;
-};
-
-template <typename T1, typename T2> class SumPolicy {
-public:
-  static void accumulate(T1 &total, T2 const &value) { total += value; }
-};
-
-template <typename T, template <typename, typename> class Policy = SumPolicy,
-          typename AT = AccumulateTraits<T>>
-auto accum(T const *beg, T const *end) {
-  ESS_FUNC_LOG();
-  using AccT = typename AT::AccT;
-  AccT res{AT::zero};
-  while (beg != end) {
-    Policy<AccT, AccT>::accumulate(res, *beg);
-    ++beg;
+  constexpr FixedString(const char (&str)[N]) {
+    for (int i = 0; i < N; ++i)
+      m_str[i] = str[i];
   }
-  return res;
+
+  constexpr char &operator[](size_t idx) {
+    assert(idx < N && "index out of range");
+    return m_str[idx];
+  }
+
+  template <size_t Idx> constexpr const char &get() const {
+    static_assert(Idx < N, "index out of range");
+    return m_str[Idx];
+  }
+
+  constexpr size_t size() const { return std::size(m_str); }
+};
+} // namespace meta
+
+namespace concepts {
+template <typename T>
+concept is_sql_literal = std::is_integral_v<T> || std::is_floating_point_v<T> ||
+                         std::is_same_v<T, bool> || std::is_enum_v<T>;
 }
 
-template <typename Iter> auto accum(Iter begin, Iter end) {
-  using VT = std::iterator_traits<Iter>::value_type;
-  VT total{};
-  while (begin != end) {
-    total += *begin;
-    ++begin;
-  }
-  return total;
-}
+namespace detail {
+struct AttributeTag {};
+} // namespace detail
 
-template <typename T1, typename T2> struct MutPolicy {
-public:
-  static void accumulate(T1 &total, T2 const &value) {
-    if (total == 0)
-      total = 1;
-    total *= value;
-  }
+struct PrimaryKey : detail::AttributeTag {};
+
+struct Unique : detail::AttributeTag {};
+
+struct AutoIncrement : detail::AttributeTag {};
+
+struct NotNull : detail::AttributeTag {};
+
+template <auto Value>
+  requires concepts::is_sql_literal<decltype(Value)>
+struct DefaultValue {
+  static constexpr auto value = Value;
 };
 
-template <typename T> struct TypeSize {
-  static std::size_t const value = sizeof(T);
+template <meta::FixedString Expr> struct DefaultExpr {
+  static_assert(                                          //
+      Expr.size() > 1 &&                                  // not null
+          Expr.template get<0>() != '\'' &&               //
+          Expr.template get<0>() != '\"' &&               //
+          Expr.template get<Expr.size() - 2>() != '\'' && //
+          Expr.template get<Expr.size() - 2>() != '\"',   //
+      "Default Expression must be a SQL expressoin, not a string literal" //
+  );
+  static constexpr auto value = Expr;
 };
 
-template <typename T> struct ElemType {};
-
-template <typename T> struct ElemType<std::vector<T>> {
-  using value = T;
-};
-
-template <typename T> struct ElemType<std::deque<T>> {
-  using value = T;
-};
-
-template <typename T> struct RemoveReferenceT {
-  using type = T;
-};
-
-template <typename T> struct RemoveReferenceT<T &> {
-  using type = T;
-};
-
-template <typename T> struct RemoveReferenceT<T *> {
-  using type = T;
+template <meta::FixedString Name> struct SerializedName : detail::AttributeTag {
+  static constexpr meta::FixedString value = Name;
 };
 
 int main() {
-  int nums[] = {1, 2, 3, 4, 5};
-  fmt::println("{}", accum(nums, nums + 5));
-  fmt::println("{}", accum<int, MutPolicy>(nums, nums + 5));
-  fmt::println("{}", TypeSize<decltype(nums)>::value);
+  auto expr = DefaultExpr<"now()">::value;
+  return 0;
 }

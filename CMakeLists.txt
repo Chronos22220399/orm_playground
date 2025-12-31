@@ -12,6 +12,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(FetchContent)
+FetchContent_Declare(
+  doctest
+  GIT_REPOSITORY https://github.com/doctest/doctest.git
+  GIT_TAG v2.4.11
+)
+FetchContent_MakeAvailable(doctest)
+
 
 message(STATUS "=== C++ Compiler Info ===")
 message(STATUS "CXX Compiler Path: ${CMAKE_CXX_COMPILER}")
@@ -20,8 +28,13 @@ message(STATUS "CXX Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 find_package(fmt REQUIRED CONFIG)
 
-add_executable(${exname} src/main.cpp)
-# add_executable(${exname} src/schema.cpp)
+# common
+add_executable(
+  ${exname} 
+  # src/leetcode.cpp
+  # src/main.cpp
+  src/schema.cpp
+)
 
 target_include_directories(
   ${exname}
@@ -52,6 +65,50 @@ target_link_options(
 
 target_precompile_headers(
   ${exname}
+  PRIVATE
+  include/std.hpp
+  include/core_thirdparties.hpp
+  include/core.hpp
+)
+
+# tests
+add_executable(
+  orm_tests
+  tests/test_main.cpp
+  tests/test_schema.cpp
+)
+
+target_include_directories(
+  orm_tests
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+  orm_tests
+  PRIVATE
+  doctest::doctest
+  fmt::fmt
+)
+
+target_compile_options(
+  orm_tests
+  PRIVATE
+  -O0
+  -g
+  -fsanitize=address
+  # -save-temps=obj
+  # -Rpass=inline
+)
+
+target_link_options(
+  orm_tests
+  PRIVATE
+  -fsanitize=address
+)
+
+target_precompile_headers(
+  orm_tests
   PRIVATE
   include/std.hpp
   include/core_thirdparties.hpp

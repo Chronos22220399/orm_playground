@@ -1,56 +1,58 @@
 #include <core.hpp>
 
-namespace ess {
-template <size_t N> struct FixedString {
-  char m_str[N];
-
-  constexpr FixedString(const char (&str)[N]) {
-    for (int i = 0; i < N; ++i)
-      m_str[i] = str[i];
-  }
-
-  constexpr char &operator[](size_t idx) {
-    static_assert(idx >= N, "index out of range");
-    return m_str[idx];
-  }
-
-  constexpr size_t size() const { return m_str.size(); }
-};
-
-namespace orm {
-
-template <FixedString ColumnName, typename... Attrs> struct Filed {
-  static constexpr FixedString column_name = ColumnName;
-  static constexpr std::tuple<Attrs...> attributes{};
-};
-
-template <typename T> struct is_filed : std::false_type {};
-
-template <FixedString FiledName, typename... Attrs>
-struct is_filed<Filed<FiledName, Attrs...>> : std::true_type {};
-
-template <typename T>
-concept FiledType = is_filed<T>::value;
-
-template <FixedString TableName, FiledType... Fileds> struct Schema {
-  static constexpr FixedString table_name = TableName;
-  static constexpr std::tuple<Fileds...> fileds{};
-};
-
-} // namespace orm
-
-} // namespace ess
+using namespace ess::orm;
 
 struct Inventory {
-  using Schema = ess::orm::Schema<"inventory", ess::orm::Filed<"price">>;
+  int id = 0;
+  int price = 0;
+  static int cnt;
+  using Schema = dsl::Schema<
+      "inventory", //
+      dsl::Field<"id", &Inventory::id, attribute::SerializedName<"price">,
+                 attribute::AutoIncrement, attribute::PrimaryKey>, //
+      dsl::Field<"price", &Inventory::price>,
+      dsl::Field<"count", &Inventory::cnt> //
+      >;
 };
 
-template <size_t N> void println(const ess::FixedString<N> &str) {
+int Inventory::cnt = 2;
+
+template <size_t N> void println(const ess::meta::FixedString<N> &str) {
   fmt::println("{}", std::string_view(str.m_str, N - 1));
 }
 
 int main() {
-  println(Inventory::Schema::table_name);
+  Inventory i{.price = 1};
+  static_assert(attribute::valid_attribute<int, attribute::AutoIncrement>);
+
+  auto table_name = Inventory::Schema::table_name;
+  auto fields = Inventory::Schema::make_fields();
+  auto price_field = std::get<0>(fields);
+  auto price_ptr = decltype(price_field)::pointer;
+  auto ptr = &Inventory::price;
+  static_assert(std::is_same_v<decltype(price_ptr), decltype(ptr)>);
+
+  using price_attrs = decltype(price_field)::attributes;
+  using price_first_attr = std::tuple_element_t<0, price_attrs>;
+  auto price_name = price_first_attr::name;
+
+  fmt::println("{}", i.*price_ptr);
+  println(price_name);
+
+  constexpr ess::meta::FixedString l = "asdfsadf";
+  constexpr ess::meta::FixedString r = "asdfsadf";
+
+  static_assert(ess::meta::fixed_string_is_equal<l, r>());
+
+  // price_field
+  // using attributes = std::tuple_element_t<
+
+  // auto one = std::get<1>(fields);
+  // println(one.column_name);
+
+  // fmt::println("{}", *(one.pointer));
+
+  // static_assert(std::is_same_v<tmp1::pointer_type, int *>);
   // int x = 10;
   // auto func = [&x]() { x++; };
 }
