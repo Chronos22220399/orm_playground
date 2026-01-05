@@ -7,11 +7,11 @@ template <meta::FixedString ColumnName, // column name
                               // expendation)
           typename... Attrs   // attributes for sql defination
           >
-  requires(
-      (attribute::is_attribute_type<Attrs> && ...) &&
-      (attribute::valid_attribute<
-           typename traits::MemberPointerTraits<Ptr>::member_type, Attrs> &&
-       ...))
+// requires(
+//     (attribute::is_attribute_type<Attrs> && ...) &&
+//     (attribute::valid_attribute<
+//          typename traits::MemberPointerTraits<Ptr>::member_type, Attrs> &&
+//      ...))
 struct Field {
 private:
   using member_traits = ess::orm::traits::MemberPointerTraits<Ptr>;

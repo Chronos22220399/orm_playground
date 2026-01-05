@@ -72,6 +72,7 @@ target_precompile_headers(
 )
 
 # tests
+enable_testing()
 add_executable(
   orm_tests
   tests/test_main.cpp
@@ -114,3 +115,5 @@ target_precompile_headers(
   include/core_thirdparties.hpp
   include/core.hpp
 )
+
+add_test(NAME orm_tests COMMAND orm_tests)

@@ -7,12 +7,14 @@ struct Inventory {
   int price = 0;
   std::string name = "";
 
+  // TODO:
+  // 1. 当前未做对重复同一类属性的检测，例如可能存在两个 SerializedName
+  // 2. DefaultValue 还不支持字符串
   using Schema = dsl::Schema<
       "inventory", //
-      dsl::Field<"id", &Inventory::id, attribute::SerializedName<"price">,
-                 attribute::AutoIncrement, attribute::PrimaryKey,
-                 ess::orm::attribute::DefaultValue<10>>, //
-      dsl::Field<"price", &Inventory::price>,            //
+      dsl::Field<"id", &Inventory::id, attribute::SerializedName<"id">,
+                 attribute::AutoIncrement, attribute::PrimaryKey>, //
+      dsl::Field<"price", &Inventory::price>,                      //
       dsl::Field<"name", &Inventory::name,
                  attribute::SerializedName<"inventory_name">>>;
 };
@@ -20,6 +22,8 @@ struct Inventory {
 template <size_t N> void println(const ess::meta::FixedString<N> &str) {
   fmt::println("{}", std::string_view(str.m_str, N - 1));
 }
+
+using namespace ess::meta;
 
 int main() {
   Inventory i{.id = 10, .price = 1};
@@ -35,17 +39,14 @@ int main() {
 
   fmt::println("{}", i.*pointer);
 
-  // auto table_name = Inventory::Schema::table_name;
-  // auto fields = Inventory::Schema::make_fields();
-  // auto price_field = std::get<0>(fields);
-  // auto price_ptr = decltype(price_field)::pointer;
-  // auto ptr = &Inventory::price;
-  // static_assert(std::is_same_v<decltype(price_ptr), decltype(ptr)>);
-  //
-  // using price_attrs = decltype(price_field)::attributes;
-  // using price_first_attr = std::tuple_element_t<0, price_attrs>;
-  // auto price_name = price_first_attr::name;
-  //
-  // fmt::println("{}", i.*price_ptr);
-  // println(price_name);
+  using expr = attribute::DefaultExpr<"helo"_fs>;
+  auto tmp = expr::expr;
+
+  auto value_1 = attribute::DefaultValue<10>::value;
+  auto value_2 = attribute::DefaultValue<1.2>::value;
+  auto value_3 = attribute::DefaultValue<"hello"_fs>::value;
+
+  println(tmp);
+  fmt::println("{}", value_1);
+  println(value_3);
 }

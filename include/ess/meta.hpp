@@ -1,7 +1,7 @@
 #pragma once
 
 namespace ess::meta {
-template <size_t N> struct FixedString {
+template <std::size_t N> struct FixedString {
   char m_str[N];
 
   constexpr FixedString(const char (&str)[N]) {
@@ -19,7 +19,7 @@ template <size_t N> struct FixedString {
     return m_str[Idx];
   }
 
-  constexpr size_t size() const { return std::size(m_str); }
+  constexpr std::size_t size() const { return std::size(m_str); }
 };
 
 template <FixedString Lhs, FixedString Rhs>
@@ -34,4 +34,9 @@ consteval bool fixed_string_is_equal() {
   return true;
 }
 
+template <FixedString Str> consteval auto operator""_fs() { return Str; }
+
+struct SqlNull {};
+
+struct SqlNow {};
 } // namespace ess::meta
