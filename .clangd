@@ -1,0 +1,17 @@
+# ~/. config/clangd/config.yaml 或项目根目录 .clangd
+
+Index:
+  Background: Skip  # 跳过后台索引
+
+# CompileFlags:
+#   Remove: 
+#     - "-Winvalid-pch"
+#
+# Diagnostics:
+#   ClangTidy:  false
+#
+# InlayHints:
+#   Enabled: false
+#
+# Hover:
+#   ShowAKA: false

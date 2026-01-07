@@ -1,5 +1,5 @@
 #pragma once
-#include <ess/orm/traits.hpp>
+#include <ess/orm/core_orm.hpp>
 
 namespace ess::orm::dsl {
 template <meta::FixedString ColumnName, // column name
@@ -7,11 +7,6 @@ template <meta::FixedString ColumnName, // column name
                               // expendation)
           typename... Attrs   // attributes for sql defination
           >
-// requires(
-//     (attribute::is_attribute_type<Attrs> && ...) &&
-//     (attribute::valid_attribute<
-//          typename traits::MemberPointerTraits<Ptr>::member_type, Attrs> &&
-//      ...))
 struct Field {
 private:
   using member_traits = ess::orm::traits::MemberPointerTraits<Ptr>;
@@ -20,16 +15,22 @@ public:
   static constexpr meta::FixedString column_name = ColumnName;
   using pointer_type = typename member_traits::pointer_type;
   static constexpr decltype(auto) pointer = member_traits::pointer;
+  using member_type = member_traits::member_type;
   using attributes = std::tuple<Attrs...>;
 
 private:
-  static_assert((attribute::is_attribute_type<Attrs> && ...),
-                "有一个或多个不能使用的属性");
-  static_assert(
-      (attribute::valid_attribute<
-           typename traits::MemberPointerTraits<Ptr>::member_type, Attrs> &&
-       ...),
-      "发现了有一个或多个不合规属性");
+  static constexpr bool _check() {
+    // 检查属性是否合法
+    attribute::check_attributes<member_type, Attrs...>();
+    return true;
+  }
+  static_assert(_check());
+  // 检查是否存在重复同类别属性
+  static_assert(!attribute::has_dup_attrs_in_tuple<attributes>,
+                "\n存在重复类型的属性： \n"
+                "1. 任意属性在一个Field中不能重复声明\n"
+                "2. DefaultValue 与 DefaultExpr 互斥\n"
+                "3. 不可存在多个 DefaultValue 或 DefaultExpr");
 };
 
 template <typename T> struct is_field : std::false_type {};
@@ -40,7 +41,7 @@ struct is_field<Field<FiledName, Ptr, Attrs...>> : std::true_type {};
 template <typename T>
 concept field_type = is_field<T>::value;
 
-template <typename LField, typename RField> consteval bool is_same_binding() {
+template <typename LField, typename RField> constexpr bool is_same_binding() {
   using L_traits = traits::MemberPointerTraits<LField::pointer>;
   using R_traits = traits::MemberPointerTraits<RField::pointer>;
 
@@ -63,8 +64,8 @@ struct no_duplicate_detector<Field> : std::true_type {};
 
 template <typename First, typename... Rest>
 struct no_duplicate_detector<First, Rest...>
-    : std::bool_constant<((!meta::fixed_string_is_equal<First::column_name,
-                                                        Rest::column_name>() &&
+    : std::bool_constant<((!meta::fs_equal(First::column_name,
+                                           Rest::column_name) &&
                            (!is_same_binding<First, Rest>())) &&
                           ...) &&
                          no_duplicate_detector<Rest...>::value> {};
@@ -86,9 +87,14 @@ struct Schema {
 
   static auto make_fields() { return std::make_tuple(Fields{}...); }
 
+  static auto make_create_table_ddl() {
+    std::string ddl = "CREATE TABLE";
+    ddl += " " + table_name;
+  }
+
 private:
   static_assert(no_duplicated_key_field_words<Fields...>,
-                "存在多个不同Field的关键字相同");
+                "存在多个不同Field的名称或是绑定的成员指针相同");
 };
 
 } // namespace ess::orm::dsl

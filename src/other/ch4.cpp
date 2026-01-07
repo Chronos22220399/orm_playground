@@ -4,7 +4,7 @@ template <typename> inline constexpr bool always_false = false;
 
 //
 template <typename T, int N, int M>
-consteval bool less(T const (&a)[N], T const (&b)[M]) {
+constexpr bool less(T const (&a)[N], T const (&b)[M]) {
   for (int i = 0; i < N && i < M; ++i) {
     if (a[i] < b[i])
       return true;
@@ -45,7 +45,7 @@ template <typename... Args> void foldPrint(Args... args) {
 }
 
 template <typename T, typename... Types>
-consteval bool isHomogenius(T, Types...) {
+constexpr bool isHomogenius(T, Types...) {
   return (std::is_same_v<T, Types> && ...);
 }
 

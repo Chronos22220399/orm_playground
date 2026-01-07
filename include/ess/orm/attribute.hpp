@@ -1,27 +1,27 @@
 #pragma once
-#include <ess/meta.hpp>
 #include <ess/orm/common_concept.hpp>
+#include <ess/orm/meta.hpp>
 
 namespace ess::orm::attribute {
 
 namespace detail {
 // 属性标签，作为属性的接口
-struct AttributeTag {
-  // template <typename T> static consteval bool accept() { return true; }
-};
+
+struct AttributeTag {};
+
+} // namespace detail
 
 // 默认表达式校验
-template <ess::meta::FixedString Expr>
+template <meta::FixedString Expr>
 constexpr bool is_valid_default_expr =
     (Expr.size() > 0 && Expr.template get<0>() != '\'' &&
      Expr.template get<0>() != '\"' &&
      Expr.template get<Expr.size() - 2>() != '\'' &&
      Expr.template get<Expr.size() - 2>() != '\"');
-} // namespace detail
 
 // 接口校验
 template <typename Attr>
-concept is_attribute_type =
+concept attribute_type =
     std::derived_from<Attr, attribute::detail::AttributeTag>;
 
 // 主键
@@ -31,10 +31,7 @@ struct PrimaryKey : detail::AttributeTag {};
 struct Unique : detail::AttributeTag {};
 
 // 自增
-struct AutoIncrement : detail::AttributeTag {
-  // template <std::integral> static consteval bool accept() { return true; }
-  // template <typename> static consteval bool accept() { return false; }
-};
+struct AutoIncrement : detail::AttributeTag {};
 
 // 非空
 struct NotNull : detail::AttributeTag {};
@@ -49,44 +46,145 @@ template <auto> struct DefaultValue {};
 
 template <concepts::sql_default_value auto Value>
 struct DefaultValue<Value> : detail::AttributeTag {
+  using semantic_type = meta::sql_value_tag<Value>::type;
   static constexpr auto value = Value;
 };
 
 // 默认表达式
-template <ess::meta::FixedString Expr>
-struct DefaultExpr : detail::AttributeTag {
+template <meta::FixedString Expr> struct DefaultExpr : detail::AttributeTag {
+  using type = meta::sql_expr;
   static constexpr auto expr = Expr;
 
-  static_assert(detail::is_valid_default_expr<expr>,
-                "\n默认表达式错误：\n"
-                "1. 表达式长度必须大于1\n"
-                "2. 表达式内部不包含引号\n");
+  static_assert(is_valid_default_expr<expr>, "\n默认表达式错误：\n"
+                                             "1. 表达式长度必须大于1\n"
+                                             "2. 表达式内部不包含引号\n");
 };
 
-template <typename T, typename Attr>
-struct is_valid_attribute : std::false_type {};
+namespace detail {
+// 兜底
+template <typename SqlSemantic, typename Attr>
+struct valid_attribute_semantic : std::false_type {};
 
-template <std::integral T>
-struct is_valid_attribute<T, AutoIncrement> : std::true_type {};
+// 通用
+template <typename SqlSemantic>
+struct valid_attribute_semantic<SqlSemantic, PrimaryKey> : std::true_type {};
 
-template <typename T>
-struct is_valid_attribute<T, PrimaryKey> : std::true_type {};
+template <typename SqlSemantic>
+struct valid_attribute_semantic<SqlSemantic, Unique> : std::true_type {};
 
-template <typename T, ess::meta::FixedString Str>
-struct is_valid_attribute<T, SerializedName<Str>> : std::true_type {};
+template <typename SqlSemantic>
+struct valid_attribute_semantic<SqlSemantic, NotNull> : std::true_type {};
 
-// template <typename T>
-// struct is_valid_attribute<T, DefaultValue<V>> : std::is_sql_int_literal<V>
-// {};
+template <typename SqlSemantic, meta::FixedString Name>
+struct valid_attribute_semantic<SqlSemantic, SerializedName<Name>>
+    : std::true_type {};
 
-// template <typename T, auto V>
-// struct is_valid_attribute<T, DefaultValue<V>>
-//     : std::bool_constant<concepts::sql_default_value<decltype(V)>> {};
+// integer
+template <>
+struct valid_attribute_semantic<meta::sql_integer, AutoIncrement>
+    : std::true_type {};
+
+// default value
+template <typename ColumnSemantic, auto Value>
+struct valid_attribute_semantic<ColumnSemantic, DefaultValue<Value>>
+    : std::bool_constant<meta::sql_compatible_v<
+          ColumnSemantic, typename meta::sql_value_tag<Value>::type>> {};
+
+// default expression
+template <typename SqlSemantic, meta::FixedString Expr>
+struct valid_attribute_semantic<SqlSemantic, DefaultExpr<Expr>>
+    : std::true_type {};
+
+//
+template <typename MemberType, typename Attr> struct valid_attribute_impl {
+private:
+  using column_semantic = meta::cpp_type_to_sql_semantic_t<MemberType>;
+
+public:
+  static constexpr bool value =
+      valid_attribute_semantic<column_semantic, Attr>::value;
+};
+
+template <typename Attr> struct attribute_category {
+  using type = Attr;
+};
+
+template <meta::FixedString Name>
+struct attribute_category<SerializedName<Name>> {
+  struct serialized_name_tag {};
+  using type = serialized_name_tag;
+};
+
+struct default_value_or_expr_tag {};
+template <auto Value> struct attribute_category<DefaultValue<Value>> {
+  using type = default_value_or_expr_tag;
+};
+
+template <meta::FixedString Expr> struct attribute_category<DefaultExpr<Expr>> {
+  using type = default_value_or_expr_tag;
+};
+
+// 检查是否有同类属性
+// 检查属性 I 是否在前面出现过
+template <typename Tuple, size_t I> constexpr bool check_at_prev() {
+  // 第0个表示未出现
+  if constexpr (I == 0) {
+    return false;
+  }
+
+  // 将第 I 个属性与前 [0, I) 个属性分别对比，查看是否重复过
+  using current_ctg =
+      typename attribute_category<std::tuple_element_t<I, Tuple>>::type;
+  bool found = false;
+
+  [&]<size_t... Prev>(std::index_sequence<Prev...>) {
+    return (
+        (found =
+             (found ||
+              std::is_same_v<current_ctg,
+                             typename attribute_category<
+                                 std::tuple_element_t<Prev, Tuple>>::type>)),
+        ...);
+  }(std::make_index_sequence<I>{});
+  return found;
+}
+
+// 检查是否有同类属性
+template <typename Tuple> constexpr bool has_dup_attrs_in_tuple() {
+  constexpr size_t N = std::tuple_size_v<Tuple>;
+  if (N <= 1) {
+    return false;
+  }
+
+  bool dup = false;
+  constexpr auto i_seq = std::make_index_sequence<N>{};
+  [&]<size_t... I>(std::index_sequence<I...>) {
+    return ((dup = (dup || check_at_prev<Tuple, I>())), ...);
+  }(i_seq);
+  return dup;
+}
+} // namespace detail
 
 template <typename MemberType, typename Attr>
-concept valid_attribute = is_valid_attribute<MemberType, Attr>::value;
+concept valid_attribute = detail::valid_attribute_impl<MemberType, Attr>::value;
 
-// template <typename MemberType, typename Attr>
-// concept valid_attribute =
-//     is_attribute_type<MemberType> && Attr::template accept<MemberType>();
+// 检查一个属性是否合法（与绑定的成员类型匹配、值合法）
+template <typename MemberType, typename Attr>
+constexpr void check_one_attribute() {
+  static_assert(attribute::attribute_type<Attr>, "不能使用的属性");
+
+  static_assert(attribute::valid_attribute<MemberType, Attr>,
+                "\n属性验证失败，请检查是否使用了不匹配的属性，特别检查默认值类"
+                "型是否和绑定的成员类型相同\n");
+}
+
+// 检查所有属性
+template <typename MemberType, typename... Attrs>
+constexpr void check_attributes() {
+  (check_one_attribute<MemberType, Attrs>(), ...);
+}
+
+// 检查是否有同类属性
+template <typename Tuple>
+constexpr bool has_dup_attrs_in_tuple = detail::has_dup_attrs_in_tuple<Tuple>();
 } // namespace ess::orm::attribute
