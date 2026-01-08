@@ -1,5 +1,6 @@
 #pragma once
 #include <ess/orm/core_orm.hpp>
+#include <fmt/ranges.h>
 
 namespace ess::orm::dsl {
 template <meta::FixedString ColumnName, // column name
@@ -87,9 +88,106 @@ struct Schema {
 
   static auto make_fields() { return std::make_tuple(Fields{}...); }
 
-  static auto make_create_table_ddl() {
-    std::string ddl = "CREATE TABLE";
-    ddl += " " + table_name;
+  // 优化2
+  // 1. 将单列处理逻辑提取为一个独立的、非内联的辅助函数模板
+  // template <typename Field>
+  // [[gnu::noinline]] static std::string make_column_def() {
+  //   using member_type = typename Field::member_type;
+  //   using sql_type = meta::cpp_type_to_sql_semantic_t<member_type>;
+  //
+  //   std::string def = std::string(std::string_view(Field::column_name));
+  //   def += " ";
+  //   def += std::string(
+  //       std::string_view(meta::sql_semantic_to_type_str<sql_type>::type_str));
+  //
+  //   // 处理属性
+  //   std::apply(
+  //       [&](auto... attrs) {
+  //         ((def += " ", def += attribute::to_sql_fragment(attrs)), ...);
+  //       },
+  //       typename Field::attributes{});
+  //
+  //   return def;
+  // }
+  //
+  // // 2. 在 Schema 中调用
+  // static std::string make_create_table_ddl() {
+  //   std::vector<std::string> column_defs;
+  //   column_defs.reserve(sizeof...(Fields));
+  //
+  //   // 使用简单的折叠表达式调用独立函数
+  //   (column_defs.push_back(make_column_def<Fields>()), ...);
+  //
+  //   return fmt::format("CREATE TABLE {} ({});", std::string_view(table_name),
+  //                      fmt::join(column_defs, ",\n"));
+  // }
+
+  // 优化1
+  // static std::string make_create_table_ddl() {
+  //   auto process_field = []<typename F>() {
+  //     // 直接返回该列的片段，减少函数体大小
+  //     using sql_type =
+  //         meta::cpp_type_to_sql_semantic_t<typename F::member_type>;
+  //     std::string col = fmt::format(
+  //         "{} {}", std::string_view(F::column_name),
+  //         std::string_view(meta::sql_semantic_to_type_str<sql_type>::type_str));
+  //
+  //     // 处理属性
+  //     std::string attrs_str;
+  //     std::apply(
+  //         [&](auto... attrs) {
+  //           ((attrs_str += " ", attrs_str +=
+  //           attribute::to_sql_fragment(attrs)),
+  //            ...);
+  //         },
+  //         typename F::attributes{});
+  //
+  //     return col + attrs_str;
+  //   };
+  //
+  //   // 关键优化点：直接用折叠表达式收集结果
+  //   std::vector<std::string> column_defs;
+  //   column_defs.reserve(sizeof...(Fields)); // 提前扩容
+  //   (column_defs.push_back(process_field.template operator()<Fields>()),
+  //   ...);
+  //
+  //   return fmt::format("CREATE TABLE {} ({});", std::string_view(table_name),
+  //                      fmt::join(column_defs, ",\n"));
+  // }
+
+  // 原本
+  static constexpr std::string make_create_table_ddl() {
+    std::vector<std::string> column_defs{};
+
+    (
+        [&]() {
+          std::vector<std::string> parts{};
+          // 列名
+          parts.push_back(std::string(std::string_view(Fields::column_name)));
+          // 类型名
+          using sql_type =
+              meta::cpp_type_to_sql_semantic_t<typename Fields::member_type>;
+          parts.push_back(std::string(std::string_view(
+              meta::sql_semantic_to_type_str<sql_type>::type_str)));
+          // 属性列表
+          std::apply(
+              [&](auto... attrs) {
+                (parts.push_back(attribute::to_sql_fragment(attrs)), ...);
+              },
+              typename Fields::attributes{});
+
+          // 过滤掉空字符串并拼接
+          std::string def;
+          for (const auto &p : parts) {
+            if (!p.empty())
+              def += " ";
+            def += p;
+          }
+          column_defs.push_back(def);
+        }(),
+        ...);
+    return fmt::format("CREATE TABLE {} ({});", std::string_view(table_name),
+                       fmt::join(column_defs, ",\n"));
   }
 
 private:

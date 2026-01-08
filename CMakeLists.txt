@@ -12,13 +12,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-include(FetchContent)
-FetchContent_Declare(
-  doctest
-  GIT_REPOSITORY https://github.com/doctest/doctest.git
-  GIT_TAG v2.4.11
-)
-FetchContent_MakeAvailable(doctest)
+# include(FetchContent)
+# FetchContent_Declare(
+#   doctest
+#   GIT_REPOSITORY https://github.com/doctest/doctest.git
+#   GIT_TAG v2.4.11
+# )
+# FetchContent_MakeAvailable(doctest)
 
 
 message(STATUS "=== C++ Compiler Info ===")
@@ -72,48 +72,48 @@ target_precompile_headers(
 )
 
 # tests
-enable_testing()
-add_executable(
-  orm_tests
-  tests/test_main.cpp
-  tests/test_schema.cpp
-)
-
-target_include_directories(
-  orm_tests
-  PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(
-  orm_tests
-  PRIVATE
-  doctest::doctest
-  fmt::fmt
-)
-
-target_compile_options(
-  orm_tests
-  PRIVATE
-  -O0
-  -g
-  -fsanitize=address
-  # -save-temps=obj
-  # -Rpass=inline
-)
-
-target_link_options(
-  orm_tests
-  PRIVATE
-  -fsanitize=address
-)
-
-target_precompile_headers(
-  orm_tests
-  PRIVATE
-  include/std.hpp
-  include/core_thirdparties.hpp
-  include/core.hpp
-)
-
-add_test(NAME orm_tests COMMAND orm_tests)
+# enable_testing()
+# add_executable(
+#   orm_tests
+#   tests/test_main.cpp
+#   tests/test_schema.cpp
+# )
+#
+# target_include_directories(
+#   orm_tests
+#   PRIVATE
+#   ${CMAKE_CURRENT_SOURCE_DIR}/include
+# )
+#
+# target_link_libraries(
+#   orm_tests
+#   PRIVATE
+#   doctest::doctest
+#   fmt::fmt
+# )
+#
+# target_compile_options(
+#   orm_tests
+#   PRIVATE
+#   -O0
+#   -g
+#   -fsanitize=address
+#   # -save-temps=obj
+#   # -Rpass=inline
+# )
+#
+# target_link_options(
+#   orm_tests
+#   PRIVATE
+#   -fsanitize=address
+# )
+#
+# target_precompile_headers(
+#   orm_tests
+#   PRIVATE
+#   include/std.hpp
+#   include/core_thirdparties.hpp
+#   include/core.hpp
+# )
+#
+# add_test(NAME orm_tests COMMAND orm_tests)

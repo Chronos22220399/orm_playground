@@ -187,4 +187,54 @@ constexpr void check_attributes() {
 // 检查是否有同类属性
 template <typename Tuple>
 constexpr bool has_dup_attrs_in_tuple = detail::has_dup_attrs_in_tuple<Tuple>();
+
+// 萃取出生成 sql ddl 所需字符串
+struct PlaceHolder {};
+
+template <typename, auto> struct attr_traits {};
+
+template <> struct attr_traits<PrimaryKey, PlaceHolder{}> {
+  static constexpr auto attr_str = meta::FixedString{"PRIMARY KEY"};
+};
+
+template <> struct attr_traits<Unique, PlaceHolder{}> {
+  static constexpr auto attr_str = meta::FixedString{"UNIQUE"};
+};
+
+template <> struct attr_traits<NotNull, PlaceHolder{}> {
+  static constexpr auto attr_str = meta::FixedString{"NOT NULL"};
+};
+
+template <auto Value> struct attr_traits<DefaultValue<Value>, Value> {
+  static constexpr auto attr_str = meta::FixedString("DEFAULT ");
+};
+
+template <meta::FixedString Expr> struct attr_traits<DefaultExpr<Expr>, Expr> {
+  static constexpr auto attr_str = meta::FixedString("DEFAULT ");
+};
+
+// 从属性映射为字符串
+template <typename Attr> std::string to_sql_fragment(Attr) {
+  using T = std::remove_cvref_t<Attr>;
+
+  if constexpr (requires { attr_traits<T, PlaceHolder{}>::attr_str; }) {
+    return std::string(
+        std::string_view(attr_traits<T, PlaceHolder{}>::attr_str));
+  } else if constexpr (requires { T::value; }) {
+    using Trait = attr_traits<T, T::value>;
+    using ValueType = std::remove_cvref_t<decltype(T::value)>;
+
+    // 默认将 enum 转换为 int
+    if constexpr (std::is_enum_v<ValueType>) {
+      return fmt::format("{} {}", Trait::attr_str, static_cast<int>(T::value));
+    } else {
+      return fmt::format("{} {}", Trait::attr_str, T::value);
+    }
+  } else if constexpr (requires { T::expr; }) {
+    using Trait = attr_traits<T, T::expr>;
+    return fmt::format("{} {}", Trait::attr_str, T::expr);
+  }
+  return "";
+}
+
 } // namespace ess::orm::attribute

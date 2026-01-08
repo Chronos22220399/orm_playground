@@ -17,36 +17,47 @@ template <std::size_t N> struct FixedString {
     return m_str[idx];
   }
 
+  constexpr char operator[](size_t idx) const {
+    assert(idx < N && "index out of range");
+    return m_str[idx];
+  }
+
   template <std::size_t Idx> constexpr const char &get() const {
     static_assert(Idx < N, "index out of range");
     return m_str[Idx];
   }
 
   constexpr std::size_t size() const { return std::size(m_str); }
+
+  constexpr const char *data() const { return m_str; }
+
+  constexpr operator std::string_view() const {
+    return std::string_view{m_str, N - 1};
+  }
 };
 
 template <FixedString Str> constexpr auto operator""_fs() { return Str; }
 
 // 比较字符串
 template <std::size_t N1, std::size_t N2>
-constexpr bool fs_equal(FixedString<N1> Lhs, FixedString<N2> Rhs) {
+constexpr bool fs_equal(FixedString<N1> lhs, FixedString<N2> rhs) {
   if constexpr (N2 != N1)
     return false;
   for (int i = 0; i < N1 - 1; ++i)
-    if (Lhs.m_str[i] != Rhs.m_str[i])
+    if (lhs.m_str[i] != rhs.m_str[i])
       return false;
   return true;
 }
 
 // 拼接字符串
 template <std::size_t N1, std::size_t N2>
-constexpr auto fs_concat(FixedString<N1> S1, FixedString<N2> S2) {
+constexpr auto fs_concat(FixedString<N1> str_1, FixedString<N2> str_2) {
   FixedString<N1 + N2 - 1> result{};
   for (std::size_t i = 0; i < N1 - 1; ++i) {
-    result[i] = S1[i];
+    result[i] = str_1[i];
   }
   for (std::size_t i = 0; i < N2 - 1; ++i) {
-    result[i + N1 - 1] = S2[i];
+    result[i + N1 - 1] = str_2[i];
   }
   result[N1 + N2 - 2] = '\0';
   return result;
@@ -58,9 +69,9 @@ struct FindResult {
   bool success;
 };
 template <std::size_t N>
-constexpr FindResult fs_find(FixedString<N> Str, char c) {
+constexpr FindResult fs_find(FixedString<N> str, char c) {
   for (std::size_t i = 0; i < N - 1; ++i) {
-    if (Str[i] == c) {
+    if (str[i] == c) {
       return {.index = i, .success = true};
     }
   }
@@ -83,14 +94,126 @@ constexpr std::optional<FixedString<Len + 1>> fs_substr(FixedString<N> str) {
 
 // 子串视图
 template <std::size_t N>
-std::string_view fs_substr_view(FixedString<N> str, std::size_t pos,
-                                std::size_t len) {
-  return std::string_view{str.m_str + pos, len};
+constexpr std::string_view fs_substr_view(FixedString<N> str, std::size_t pos,
+                                          std::size_t len) {
+  return std::string_view{str.data() + pos, len};
 }
 
-// 串式图
-template <std::size_t N> std::string_view fs_string_view(FixedString<N> str) {
-  return std::string_view{str.m_str};
+// 串视图
+template <std::size_t N>
+constexpr std::string_view fs_string_view(FixedString<N> str) {
+  return std::string_view{str.data()};
+}
+
+// 判断是否以prefix为前缀
+template <std::size_t N1, std::size_t N2>
+constexpr bool fs_starts_with(FixedString<N1> str, FixedString<N2> prefix) {
+  if constexpr (N1 < N2) {
+    return false;
+  }
+  for (int i = 0; i < N2 - 1; ++i) {
+    if (str[i] != prefix[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// 改为大写
+template <std::size_t N> constexpr auto fs_to_upper(FixedString<N> str) {
+  FixedString<N> result{};
+  for (int i = 0; i < N - 1; ++i) {
+    if (str[i] >= 'a' && str[i] <= 'z') {
+      result[i] = str[i] - 32;
+    } else {
+      result[i] = str[i];
+    }
+  }
+  return result;
+}
+
+// 改为小写
+template <std::size_t N> constexpr auto str_to_lower(FixedString<N> str) {
+  FixedString<N> result{};
+  for (int i = 0; i < N - 1; ++i) {
+    if (str[i] >= 'A' && str[i] <= 'Z') {
+      result[i] = str[i] + 32;
+    } else {
+      result[i] = str[i];
+    }
+  }
+  return result;
+}
+
+// 将字符转为大写
+constexpr char to_upper(char c) {
+  if (c >= 'a' && c <= 'z')
+    return c - 32;
+  return c;
+}
+
+// 将字符转为小写
+constexpr char to_lower(char c) {
+  if (c >= 'A' && c <= 'Z')
+    return c + 32;
+  return c;
+}
+
+// 判断是否为空白字符
+constexpr bool is_space(char c) {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' ||
+         c == '\v';
+}
+
+// 忽略大小写的比较
+template <std::size_t N1, std::size_t N2>
+consteval bool fs_equal_ignore_case(FixedString<N1> lhs, FixedString<N2> rhs) {
+  if constexpr (N1 != N2) {
+    return false;
+  }
+  for (int i = 0; i < N1 - 1; ++i) {
+    if (to_lower(lhs[i]) != to_lower(rhs[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// 寻找第一个非空白字符的下标
+template <std::size_t N>
+constexpr FindResult fs_find_first_non_space(FixedString<N> str) {
+  for (std::size_t i = 0; i < N - 1; ++i) {
+    if (!is_space(str[i]))
+      return {.index = i, .success = true};
+  }
+  return {.index = N, .success = false};
+}
+
+// 寻找最后一个非空白字符的下标
+template <std::size_t N>
+consteval FindResult fs_find_last_non_space(FixedString<N> str) {
+  std::size_t i = N - 1;
+  while (i > 0) {
+    i--;
+    if (!is_space(str[i]))
+      return {.index = (std::size_t)i, .success = true};
+  }
+  return {.index = N, .success = false};
+}
+
+template <FixedString Str> consteval auto fs_trim() {
+  constexpr auto begin_res = fs_find_first_non_space(Str);
+  constexpr auto end_res = fs_find_last_non_space(Str);
+
+  constexpr bool is_empty_or_blank = (!begin_res.success || !end_res.success ||
+                                      (begin_res.index > end_res.index));
+
+  if constexpr (is_empty_or_blank) {
+    return FixedString<1>{""};
+  } else {
+    constexpr auto len = end_res.index - begin_res.index + 1;
+    return fs_substr<begin_res.index, len>(Str).value();
+  }
 }
 
 struct SqlNull {};
@@ -226,4 +349,28 @@ struct cpp_type_to_sql_semantic
 
 template <typename T>
 using cpp_type_to_sql_semantic_t = cpp_type_to_sql_semantic<T>::type;
+
+template <typename> struct sql_semantic_to_type_str {};
+
+template <> struct sql_semantic_to_type_str<sql_integer> {
+  static constexpr auto type_str = "INT"_fs;
+};
+
+template <> struct sql_semantic_to_type_str<sql_floating> {
+  static constexpr auto type_str = "REAL"_fs;
+};
+
+template <> struct sql_semantic_to_type_str<sql_text> {
+  static constexpr auto type_str = "TEXT"_fs;
+};
+
+template <> struct sql_semantic_to_type_str<sql_boolean> {
+  static constexpr auto type_str = "BOOLEAN"_fs;
+};
+
+template <std::size_t N>
+constexpr std::string_view format_as(const FixedString<N> &str) {
+  return std::string_view(str);
+}
+
 } // namespace ess::orm::meta

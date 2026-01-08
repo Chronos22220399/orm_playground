@@ -1,4 +1,5 @@
 #include <core.hpp>
+#include <ess/orm/test/stress_test.hpp>
 
 using namespace ess::orm;
 using namespace ess::orm::meta;
@@ -27,12 +28,23 @@ struct Goods {
 };
 
 template <size_t N> void println(const ess::orm::meta::FixedString<N> &str) {
-  fmt::println("{}", std::string_view(str.m_str, N - 1));
+  fmt::println("{}", std::string_view(str));
 }
 
 int main() {
-  constexpr auto str = "hello"_fs;
-  auto s = fs_substr_view(str, 1, 3);
-  fmt::println("{}", s);
-  fmt::println("{}", fs_string_view(str));
+  Massive240 entity{};
+  // 1. 生成所有 DDL
+  auto goods_ddl = Goods::Schema::make_create_table_ddl();
+  auto massive_ddl = Massive240::Schema::make_create_table_ddl();
+
+  // 2. 彩色输出
+  fmt::print(fmt::fg(fmt::color::aquamarine), "--- Goods DDL ---\n{}\n\n",
+             goods_ddl);
+
+  // Massive Entity 重点展示：使用金色显示
+  fmt::print(fmt::fg(fmt::color::gold) | fmt::emphasis::bold,
+             "--- MASSIVE ENTITY (50 FIELDS STRESS TEST) ---\n");
+  fmt::print(fmt::fg(fmt::color::wheat), "{}\n\n", massive_ddl);
+
+  return 0;
 }

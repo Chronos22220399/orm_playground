@@ -178,4 +178,11 @@ TEST_CASE("fixed_string check") {
   CHECK_FALSE(res_3.has_value());
   CHECK(res_4.has_value());
   CHECK(fs_equal(res_4.value(), str_3));
+
+  // fs_starts_with
+  constexpr auto str_4 = "easdfasdfasdf"_fs;
+  constexpr auto prefix = "eas"_fs;
+  CHECK(fs_starts_with(str_4, prefix));
+  CHECK_FALSE(fs_starts_with(str_4, "esa"_fs));
+  CHECK_FALSE(fs_starts_with(str_4, fs_concat(str_4, "12"_fs)));
 }
