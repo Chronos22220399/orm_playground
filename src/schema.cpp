@@ -43,7 +43,7 @@ int main() {
 
   // Massive Entity 重点展示：使用金色显示
   fmt::print(fmt::fg(fmt::color::gold) | fmt::emphasis::bold,
-             "--- MASSIVE ENTITY (50 FIELDS STRESS TEST) ---\n");
+             "--- MASSIVE ENTITY (240 FIELDS STRESS TEST) ---\n");
   fmt::print(fmt::fg(fmt::color::wheat), "{}\n\n", massive_ddl);
 
   return 0;
