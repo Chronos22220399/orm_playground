@@ -373,4 +373,27 @@ constexpr std::string_view format_as(const FixedString<N> &str) {
   return std::string_view(str);
 }
 
+// join
+static std::string join(const std::vector<std::string> &elements,
+                        std::string_view delimeter) {
+  if (elements.empty())
+    return "";
+  std::size_t total_len = 0;
+  std::string result{};
+  // 计算总长度
+  for (auto &elem : elements) {
+    total_len += elem.size();
+  }
+  total_len += delimeter.size() * (elements.size() - 1);
+  // 预留位置并插入
+  result.reserve(total_len);
+  for (std::size_t i = 0; i < elements.size(); ++i) {
+    result += elements[i];
+    if (i < elements.size() - 1) {
+      result += delimeter;
+    }
+  }
+  return result;
+}
+
 } // namespace ess::orm::meta
