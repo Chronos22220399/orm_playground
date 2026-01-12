@@ -1,5 +1,8 @@
 #pragma once
-#include <ess/orm/core_orm.hpp>
+#include <ess/orm/attribute.hpp>
+#include <ess/orm/common_concept.hpp>
+#include <ess/orm/meta.hpp>
+#include <ess/orm/traits.hpp>
 #include <fmt/ranges.h>
 
 namespace ess::orm::dsl {
@@ -123,5 +126,8 @@ private:
   static_assert(no_duplicated_key_field_words<Fields...>,
                 "存在多个不同Field的名称或是绑定的成员指针相同");
 };
+
+template <typename Table>
+concept is_table_type = requires { typename Table::Schema; };
 
 } // namespace ess::orm::dsl

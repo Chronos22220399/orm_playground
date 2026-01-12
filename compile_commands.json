@@ -1,14 +1,1 @@
-[
-{
-  "directory": "/home/Ess/Code/orm_playground",
-  "command": "/usr/bin/c++ -DFMT_SHARED -I/home/Ess/Code/orm_playground/include -std=c++20 -O2 -fsanitize=address -Winvalid-pch -x c++-header -include /home/Ess/Code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx -o CMakeFiles/orm.dir/cmake_pch.hxx.gch -c /home/Ess/Code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx.cxx",
-  "file": "/home/Ess/Code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx.cxx",
-  "output": "CMakeFiles/orm.dir/cmake_pch.hxx.gch"
-},
-{
-  "directory": "/home/Ess/Code/orm_playground",
-  "command": "/usr/bin/c++ -DFMT_SHARED -I/home/Ess/Code/orm_playground/include -std=c++20 -O2 -fsanitize=address -Winvalid-pch -include /home/Ess/Code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx -o CMakeFiles/orm.dir/src/schema.cpp.o -c /home/Ess/Code/orm_playground/src/schema.cpp",
-  "file": "/home/Ess/Code/orm_playground/src/schema.cpp",
-  "output": "CMakeFiles/orm.dir/src/schema.cpp.o"
-}
-]
+/home/Ess/Code/orm_playground/out/Debug/compile_commands.json

@@ -1,5 +1,5 @@
 #pragma once
-#include <core.hpp>
+#include <ess/orm/meta.hpp>
 
 namespace ess::orm::concepts {
 namespace detail {

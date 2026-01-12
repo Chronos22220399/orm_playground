@@ -11,3 +11,9 @@
 #endif
 
 #define ESS_FUNC_LOG() (fmt::println("{}", ESS_FUNCTION_SIGNATURE))
+
+#if defined(__cplusplus) && __cplusplus >= 201703L
+
+#define ESS_HAS_INCLUDE
+
+#endif

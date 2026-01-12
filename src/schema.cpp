@@ -1,5 +1,7 @@
 #include <core.hpp>
-#include <ess/orm/test/stress_test.hpp>
+#include <ess/orm/config/config.hpp>
+#include <ess/orm/runtime.hpp>
+// #include <ess/orm/test/stress_test.hpp>
 
 using namespace ess::orm;
 using namespace ess::orm::meta;
@@ -17,7 +19,7 @@ struct Goods {
   using Schema = dsl::Schema<
       "goods",
       dsl::Field<"id", &Goods::id, attribute::PrimaryKey,
-                 attribute::AutoIncrement>,
+                 attribute::AutoIncrement, attribute::DefaultValue<1>>,
       dsl::Field<"title", &Goods::title,
                  attribute::DefaultValue<"untitled"_fs>>,
       dsl::Field<"price", &Goods::price, attribute::DefaultValue<0.0>>,
@@ -31,20 +33,18 @@ template <size_t N> void println(const ess::orm::meta::FixedString<N> &str) {
   fmt::println("{}", std::string_view(str));
 }
 
+struct Foo {};
+
+namespace ess::orm::dialect {
+constexpr Postgres get_orm_dialect(DialectTag) { return {}; }
+} // namespace ess::orm::dialect
+
 int main() {
-  Massive240 entity{};
-  // 1. 生成所有 DDL
   auto goods_ddl = Goods::Schema::make_create_table_ddl();
-  auto massive_ddl = Massive240::Schema::make_create_table_ddl();
+  // fmt::print(fmt::fg(fmt::color::aquamarine), "--- Goods DDL ---\n{}\n\n",
+  //            goods_ddl);
 
-  // 2. 彩色输出
-  fmt::print(fmt::fg(fmt::color::aquamarine), "--- Goods DDL ---\n{}\n\n",
-             goods_ddl);
-
-  // Massive Entity 重点展示：使用金色显示
-  // fmt::print(fmt::fg(fmt::color::gold) | fmt::emphasis::bold,
-  //            "--- MASSIVE ENTITY (240 FIELDS STRESS TEST) ---\n");
-  // fmt::print(fmt::fg(fmt::color::wheat), "{}\n\n", massive_ddl);
+  ess::orm::query<Goods, "SELECT * FROM goods WHERE id > ?">(10);
 
   return 0;
 }
