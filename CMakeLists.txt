@@ -60,7 +60,7 @@ target_compile_options(
   -O2
   -fsanitize=address
   -stdlib=libc++
-  # -save-temps=obj
+  -save-temps=obj
   # -Rpass=inline
 )
 
