@@ -10,22 +10,21 @@ template <std::size_t N>
 struct is_fixed_string_impl<meta::FixedString<N>> : std::true_type {};
 
 // 兜底
-template <typename> struct is_sql_value_impl : std::false_type {};
+template <typename> struct sql_value_impl : std::false_type {};
 
 // 整形 sql 值
-template <std::integral T> struct is_sql_value_impl<T> : std::true_type {};
+template <std::integral T> struct sql_value_impl<T> : std::true_type {};
 
 // 浮点形 sql 值
-template <std::floating_point T>
-struct is_sql_value_impl<T> : std::true_type {};
+template <std::floating_point T> struct sql_value_impl<T> : std::true_type {};
 
 // 布尔形 sql 值
-template <> struct is_sql_value_impl<bool> : std::true_type {};
+template <> struct sql_value_impl<bool> : std::true_type {};
 
 // 枚举型 sql 值
 template <typename E>
   requires std::is_enum_v<E>
-struct is_sql_value_impl<E> : std::true_type {};
+struct sql_value_impl<E> : std::true_type {};
 } // namespace detail
 
 template <auto Ptr>
@@ -38,15 +37,15 @@ concept fixed_string_type =
 
 namespace detail {
 // 字符串型
-template <fixed_string_type S> struct is_sql_value_impl<S> : std::true_type {};
+template <fixed_string_type S> struct sql_value_impl<S> : std::true_type {};
 // 空值
-template <> struct is_sql_value_impl<meta::SqlNull> : std::true_type {};
+template <> struct sql_value_impl<meta::SqlNull> : std::true_type {};
 // 当前时间点
-template <> struct is_sql_value_impl<meta::SqlNow> : std::true_type {};
+template <> struct sql_value_impl<meta::SqlNow> : std::true_type {};
 
 } // namespace detail
 
 // 支持 integer、floating_point、enum、bool、fixed_string
 template <typename T>
-concept sql_default_value = detail::is_sql_value_impl<T>::value;
+concept sql_default_value = detail::sql_value_impl<T>::value;
 } // namespace ess::orm::concepts

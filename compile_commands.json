@@ -1,1 +1,14 @@
-/home/Ess/Code/orm_playground/out/Debug/compile_commands.json
+[
+{
+  "directory": "/Users/wuming/code/orm_playground",
+  "command": "/opt/homebrew/opt/llvm/bin/clang++ -DFMT_SHARED -I/Users/wuming/code/orm_playground/include -I/Users/wuming/code/orm_playground/configs -isystem /opt/homebrew/include -std=c++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk -mmacosx-version-min=14.5 -O2 -fsanitize=address -Winvalid-pch -fpch-instantiate-templates -Xclang -emit-pch -Xclang -include -Xclang /Users/wuming/code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx -x c++-header -o CMakeFiles/orm.dir/cmake_pch.hxx.pch -c /Users/wuming/code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx.cxx",
+  "file": "/Users/wuming/code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx.cxx",
+  "output": "CMakeFiles/orm.dir/cmake_pch.hxx.pch"
+},
+{
+  "directory": "/Users/wuming/code/orm_playground",
+  "command": "/opt/homebrew/opt/llvm/bin/clang++ -DFMT_SHARED -I/Users/wuming/code/orm_playground/include -I/Users/wuming/code/orm_playground/configs -isystem /opt/homebrew/include -std=c++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk -mmacosx-version-min=14.5 -O2 -fsanitize=address -Winvalid-pch -Xclang -include-pch -Xclang /Users/wuming/code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx.pch -Xclang -include -Xclang /Users/wuming/code/orm_playground/CMakeFiles/orm.dir/cmake_pch.hxx -o CMakeFiles/orm.dir/src/test_sqlite3.cpp.o -c /Users/wuming/code/orm_playground/src/test_sqlite3.cpp",
+  "file": "/Users/wuming/code/orm_playground/src/test_sqlite3.cpp",
+  "output": "CMakeFiles/orm.dir/src/test_sqlite3.cpp.o"
+}
+]

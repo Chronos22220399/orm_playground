@@ -27,6 +27,7 @@ message(STATUS "CXX Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "CXX Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 find_package(fmt REQUIRED CONFIG)
+find_package(SQLite3 REQUIRED)
 
 # common
 add_executable(
@@ -34,6 +35,7 @@ add_executable(
   # src/leetcode.cpp
   # src/main.cpp
   src/schema.cpp
+  # src/test_sqlite3.cpp
 )
 
 target_include_directories(
@@ -47,13 +49,17 @@ target_link_libraries(
   ${exname} 
   PRIVATE
   fmt::fmt
+  ${SQLite3_LIBRARIES}
 )
+
+set(LLVM_PREFIX "/opt/homebrew/opt/llvm")
 
 target_compile_options(
   ${exname}
   PRIVATE
   -O2
   -fsanitize=address
+  -stdlib=libc++
   # -save-temps=obj
   # -Rpass=inline
 )
@@ -62,15 +68,18 @@ target_link_options(
   ${exname}
   PRIVATE
   -fsanitize=address
+  -stdlib=libc++
+  -L${LLVM_PREFIX}/lib/c++
+  -W1,-rpath,${LLVM_PREFIX}/lib/c++
 )
 
-target_precompile_headers(
-  ${exname}
-  PRIVATE
-  include/std.hpp
-  include/core_thirdparties.hpp
-  include/core.hpp
-)
+# target_precompile_headers(
+#   ${exname}
+#   PRIVATE
+#   include/std.hpp
+#   include/core_thirdparties.hpp
+#   include/core.hpp
+# )
 
 # tests
 # enable_testing()

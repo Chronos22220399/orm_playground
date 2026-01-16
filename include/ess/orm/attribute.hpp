@@ -41,11 +41,9 @@ template <meta::FixedString Name> struct SerializedName : detail::AttributeTag {
   static constexpr meta::FixedString name = Name;
 };
 
-// 默认值
-template <auto> struct DefaultValue {};
-
+// sql 默认值
 template <concepts::sql_default_value auto Value>
-struct DefaultValue<Value> : detail::AttributeTag {
+struct DefaultValue : detail::AttributeTag {
   using semantic_type = meta::sql_value_tag<Value>::type;
   static constexpr auto value = Value;
 };

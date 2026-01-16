@@ -12,6 +12,26 @@ concept has_dialect = requires {
   requires dialect::dialect_type<typename T::dialect>;
 };
 
+template <typename T, typename Default> struct get_dialect_or {
+  using type = Default;
+};
+
+template <typename T, typename Default>
+  requires(has_dialect<T>)
+struct get_dialect_or<T, Default> {
+  using type = T::dialect;
+};
+
+template <typename T>
+concept has_connection_url = requires {
+  { T::connection_url } -> std::convertible_to<std::string>;
+};
+
+template <typename T>
+concept has_password = requires {
+  { T::password } -> std::convertible_to<std::string>;
+};
+
 template <typename T>
 concept has_enable_sql_logging = requires {
   { T::enable_sql_logging } -> std::convertible_to<bool>;
@@ -27,16 +47,6 @@ concept has_query_timeout = requires {
   { T::query_timeout } -> std::convertible_to<std::chrono::milliseconds>;
 };
 
-template <typename T, typename Default> struct get_dialect_or {
-  using type = Default;
-};
-
-template <typename T, typename Default>
-  requires(has_dialect<T>)
-struct get_dialect_or<T, Default> {
-  using type = T::dialect;
-};
-
 } // namespace detail
 
 template <typename UserCfg, typename DefaultCfg = config::DefaultConfig>
@@ -44,6 +54,24 @@ struct ConfigTrait {
   // dialect
   using dialect =
       detail::get_dialect_or<UserCfg, typename DefaultCfg::dialect>::type;
+
+  // connection_url
+  static constexpr std::string connection_url = []() {
+    if constexpr (detail::has_connection_url<UserCfg>) {
+      return UserCfg::connection_url;
+    } else {
+      return DefaultConfig::connection_url;
+    }
+  }();
+
+  // password
+  static constexpr std::string password = []() {
+    if constexpr (detail::has_password<UserCfg>) {
+      return UserCfg::password;
+    } else {
+      return DefaultConfig::password;
+    }
+  }();
 
   // enable_sql_logging
   static constexpr bool enable_sql_logging = []() {

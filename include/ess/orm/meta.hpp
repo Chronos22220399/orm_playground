@@ -10,7 +10,10 @@ template <std::size_t N> struct FixedString {
       m_str[i] = str[i];
   }
 
-  constexpr FixedString() = default;
+  constexpr FixedString() {
+    for (int i = 0; i < N; ++i)
+      m_str[i] = '\0';
+  };
 
   constexpr char &operator[](size_t idx) {
     assert(idx < N && "index out of range");

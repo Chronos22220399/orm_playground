@@ -1,10 +1,10 @@
 #!/bin/zsh
 
+      # -DCMAKE_CXX_FLAGS="-ftime-report" \
 cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
       -DCMAKE_CXX_STANDARD=20 \
       -DCMAKE_CXX_STANDARD_REQUIRED=ON \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-      -DCMAKE_CXX_FLAGS="-ftime-report" \
       -B build
 
 cmake --build build -j 4

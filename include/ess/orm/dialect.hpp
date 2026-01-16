@@ -17,5 +17,4 @@ concept dialect_type = std::derived_from<Dialect, DialectTag>;
 template <dialect_type Dialect, meta::FixedString SQL> static bool validate() {
   return true;
 }
-
 } // namespace ess::orm::dialect

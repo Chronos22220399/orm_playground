@@ -4,6 +4,7 @@
 #include <ess/orm/meta.hpp>
 #include <ess/orm/traits.hpp>
 #include <fmt/ranges.h>
+#include <sqlite3.h>
 
 namespace ess::orm::dsl {
 template <meta::FixedString ColumnName, // column name
@@ -89,8 +90,7 @@ struct Schema {
   static constexpr meta::FixedString table_name = TableName;
   using fields = std::tuple<Fields...>;
 
-  static auto make_fields() { return std::make_tuple(Fields{}...); }
-
+private:
   template <typename Field>
   [[gnu::noinline]] static std::string make_col_def() {
     using member_semantic_type =
@@ -113,13 +113,17 @@ struct Schema {
     return col_def + attrs_str;
   }
 
-  static std::string make_create_table_ddl() {
+public:
+  static auto make_fields() { return std::make_tuple(Fields{}...); }
+
+  static std::string make_create_table_ddl(bool not_replace = true) {
     std::vector<std::string> col_defs{};
     // 预留字段
     col_defs.reserve(sizeof...(Fields));
     (col_defs.push_back(make_col_def<Fields>()), ...);
-    return fmt::format("CREATE TABLE {} ({})", std::string_view(table_name),
-                       meta::join(col_defs, ",\n"));
+    return fmt::format(
+        "CREATE TABLE {}{} ({});", (not_replace ? "IF NOT EXISTS " : ""),
+        std::string_view(table_name), meta::join(col_defs, ",\n"));
   }
 
 private:
@@ -128,6 +132,6 @@ private:
 };
 
 template <typename Table>
-concept is_table_type = requires { typename Table::Schema; };
+concept table_type = requires { typename Table::Schema; };
 
 } // namespace ess::orm::dsl
