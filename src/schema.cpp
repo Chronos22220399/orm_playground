@@ -1,7 +1,8 @@
 #include <core.hpp>
 #include <ess/orm/config/config.hpp>
+#include <ess/orm/result_set_mapper.hpp>
 #include <ess/orm/row.hpp>
-#include <ess/orm/runtime.hpp>
+#include <ess/orm/statement.hpp>
 // #include <ess/orm/test/stress_test.hpp>
 #include <sqlite3.h>
 
@@ -46,37 +47,43 @@ void func() {
     return;
   }
 
-  sqlite3_stmt *stmt;
   auto ddl = Goods::Schema::make_create_table_ddl();
 
-  // fmt::println("{}", ddl);
-  rc = sqlite3_prepare_v2(db, "SELECT * FROM goods WHERE id = 1", -1, &stmt,
-                          nullptr);
-  if (rc != SQLITE_OK) {
-    std::cerr << "select stmt prepare failed: " << sqlite3_errmsg(db)
-              << std::endl;
-    sqlite3_close(db);
-    return;
-  }
+  Statement stmt;
+  stmt.prepare(db, "SELECT * FROM goods WHERE id > ?");
+  stmt.bind_params(0);
 
   Goods goods{};
 
-  int res = sqlite3_step(stmt);
-  if (res == SQLITE_ROW) {
+  while (stmt.next()) {
     auto mapper = ResultSetMapper<Goods>{};
-    mapper.init_mapper(stmt);
-    auto row = mapper.map_row(stmt);
-    fmt::println("{} {} {} {} {} {}", (int)row["id"], (std::string)row["title"],
-                 (double)row["price"], (double)row["stock"], (int)row["status"],
-                 (bool)row["enabled"]);
-    mapper.map_row(stmt, goods);
+    mapper.init_mapper(stmt.get());
+    auto row = mapper.map_row(stmt.get());
+
+    int id = row.get_if<int>("id").value();
+    auto title = row.get_if<std::string>("title").value();
+    auto price = row.get_if<double>("price").value();
+    auto stock = row.get_if<float>("stock").value();
+    auto status = row.get_if<int>("status").value();
+    auto enabled = row.get_if<bool>("enabled").value();
+    // auto price = row.get_if<double>("price").value();
+
+    // int id = row["id"];
+    // auto title = row["title"].as<std::string>();
+    // auto price = row["price"].as<double>();
+    // auto stock = row["stock"].as<float>();
+    // auto status = row["status"].as<int>();
+    // auto enabled = row["enabled"].as<bool>();
+    fmt::println("{} {} {} {} {} {}", id, title, price, stock, status, enabled);
+    mapper.map_row(stmt.get(), goods);
     fmt::println("{} {} {} {} {} {}", goods.id, goods.title, goods.price,
                  goods.stock, (int)goods.status, goods.enabled);
   }
 
+  stmt.clear_bindings();
+
   // ess::orm::config::print_config();
 
-  sqlite3_finalize(stmt);
   sqlite3_close(db);
 }
 

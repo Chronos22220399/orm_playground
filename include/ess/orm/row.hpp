@@ -13,6 +13,17 @@ public:
     const DBValue &m_value;
 
     template <typename T> operator T() const {
+      return this->template get_converted<T>();
+    }
+
+    template <typename T> T as() const {
+      return this->template get_converted<T>();
+    }
+
+    const DBValue &get_variant() const { return m_value; }
+
+  private:
+    template <typename T> T get_converted() const {
       return std::visit(
           [](auto &&val) -> T {
             using V = std::decay_t<decltype(val)>;
@@ -20,22 +31,17 @@ public:
             if constexpr (std::is_same_v<T, V>) {
               return val;
               // 可强制转换的数值类型
-            } else if constexpr (std::is_arithmetic_v<T> &&
+            } else if constexpr ((std::is_arithmetic_v<T> ||
+                                  std::is_same_v<bool, T>) &&
                                  std::is_arithmetic_v<V>) {
               return static_cast<T>(val);
-            } else if constexpr (std::is_same_v<std::string, T> &&
-                                 std::is_same_v<std::string, V>) {
-              return val;
             } else {
-              throw std::runtime_error("Type missmatch: cannot convert");
+              throw std::runtime_error(
+                  "Type missmatch: cannot convert database value");
             }
           },
           m_value);
     }
-
-    template <typename T> T as() const { return std::get<T>(m_value); }
-
-    const DBValue &get_variant() const { return m_value; }
   };
 
   Row() = default;
@@ -65,9 +71,7 @@ public:
   template <typename T> std::optional<T> get_if(std::string const &key) const {
     auto it = m_data.find(key);
     if (it != m_data.end()) {
-      if (auto *p = std::get_if<T>(&it->second)) {
-        return *p;
-      }
+      return Proxy{it->second}.template as<T>();
     }
     return std::nullopt;
   }
