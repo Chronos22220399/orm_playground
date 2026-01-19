@@ -5,16 +5,20 @@
 
 namespace ess::orm::config {
 
+struct Database {};
+
 struct DefaultConfig {
 
-  using dialect = dialect::Sqlite;
+  using dialect = dialect::Sqlite3;
 
   // TODO: 以后可以考虑的差异化配置
   // struct DialectOptions {
   //   static constexpr bool use_ssl = true;
   //   static constexpr const char *schema_search_path = "public";
   // };
-  //
+
+  // TODO: 添加多个数据库
+  using databases = std::tuple<Database>;
 
   static constexpr std::string connection_url = "";
 

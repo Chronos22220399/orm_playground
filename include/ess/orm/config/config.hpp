@@ -1,6 +1,7 @@
 #pragma once
 #include <ess/orm/config/traits.hpp>
 #include <ess/orm/dialect.hpp>
+#include <fmt/color.h>
 
 namespace ess::orm::config {
 
@@ -19,6 +20,8 @@ using config = ConfigTrait<UserConfig, DefaultConfig>;
 
 using dialect = config::dialect;
 
+static constexpr std::string connection_url = config::connection_url;
+
 static constexpr bool enable_sql_logging = config::enable_sql_logging;
 
 static constexpr std::size_t pool_size = config::pool_size;
@@ -27,8 +30,8 @@ static constexpr std::chrono::milliseconds query_timeout =
     config::query_timeout;
 
 static constexpr std::string get_dialect_string() {
-  if constexpr (std::is_same_v<dialect, orm::dialect::Sqlite>) {
-    return "Sqlite";
+  if constexpr (std::is_same_v<dialect, orm::dialect::Sqlite3>) {
+    return "Sqlite3";
   } else if constexpr (std::is_same_v<dialect, orm::dialect::Postgres>) {
     return "Postgres";
   } else {

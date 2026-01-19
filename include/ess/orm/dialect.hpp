@@ -5,16 +5,14 @@ namespace ess::orm::dialect {
 
 struct DialectTag {};
 
-struct Sqlite : DialectTag {};
+struct Sqlite3 : DialectTag {};
 
 struct Postgres : DialectTag {};
 
-constexpr Sqlite get_orm_dialect(...) { return {}; }
+template <typename Database>
+concept dialect_type = std::derived_from<Database, DialectTag>;
 
-template <typename Dialect>
-concept dialect_type = std::derived_from<Dialect, DialectTag>;
-
-template <dialect_type Dialect, meta::FixedString SQL> static bool validate() {
+template <dialect_type Database, meta::FixedString SQL> static bool validate() {
   return true;
 }
 } // namespace ess::orm::dialect

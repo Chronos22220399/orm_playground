@@ -1,10 +1,13 @@
 # ~/. config/clangd/config.yaml 或项目根目录 .clangd
 
 Index:
-  Background: Skip  # 跳过后台索引
+  Background: Skip # 跳过后台索引
+
+CompileFlags:
+  CompilationDatabase: "build"
 
 # CompileFlags:
-#   Remove: 
+#   Remove:
 #     - "-Winvalid-pch"
 #
 # Diagnostics:

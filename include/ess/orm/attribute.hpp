@@ -203,6 +203,10 @@ template <> struct attr_traits<NotNull, PlaceHolder{}> {
   static constexpr auto attr_str = meta::FixedString{"NOT NULL"};
 };
 
+template <> struct attr_traits<AutoIncrement, PlaceHolder{}> {
+  static constexpr auto attr_str = meta::FixedString{"AUTOINCREMENT"};
+};
+
 template <auto Value> struct attr_traits<DefaultValue<Value>, Value> {
   static constexpr auto attr_str = meta::FixedString("DEFAULT ");
 };

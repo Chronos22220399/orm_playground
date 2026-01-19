@@ -6369,7 +6369,7 @@ struct Foo
 };
 
 
-void func()
+void test_row()
 {
   sqlite3 * db = nullptr;
   int rc = sqlite3_open_v2("data/test.db", &db, 2, nullptr);
@@ -6408,6 +6408,6 @@ int main()
   Goods goods = {{0}, std::basic_string<char, std::char_traits<char>, std::allocator<char> >{}, {static_cast<float>(0.0)}, {0}, {GoodsStatus::Normal}, {true}};
   constexpr const int idx = ess::orm::SchemaMapper<Goods>::find_field_index(std::basic_string_view<char, std::char_traits<char> >("status"));
   fmt::println(fmt::fstring<const int &>("{}"), idx);
-  func();
+  test_row();
   return 0;
 }

@@ -29,6 +29,8 @@ message(STATUS "CXX Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 find_package(fmt REQUIRED CONFIG)
 find_package(SQLite3 REQUIRED)
 
+file(GLOB ORM_SOURCES "src/ess/orm/*.cpp")
+
 # common
 add_executable(
   ${exname} 
@@ -36,6 +38,7 @@ add_executable(
   # src/main.cpp
   src/schema.cpp
   # src/test_sqlite3.cpp
+  ${ORM_SOURCES}
 )
 
 target_include_directories(

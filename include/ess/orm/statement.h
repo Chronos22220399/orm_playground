@@ -1,17 +1,20 @@
-#include <ess/orm/dsl.hpp>
-#include <ess/orm/result_set_mapper.hpp>
+#pragma once
+#include <core_thirdparties.hpp>
 #include <ess/orm/sql_destroier.hpp>
-#include <sqlite3.h>
 
 namespace ess::orm {
+class Connection;
 
 class Statement {
-  StatementPtr m_stmt;
+  // 通过 weak_ptr 保证 m_stmt 在 sqlite3* 之前被释放（Statement 在 Connection
+  // 之前）
+  std::weak_ptr<Connection> m_conn_ref;
+  StatPtr m_stmt;
 
 public:
   Statement() = default;
 
-  Statement(sqlite3 *db, std::string_view sql) { prepare(db, sql); }
+  Statement(std::shared_ptr<Connection> conn, std::string_view sql);
 
   Statement(Statement const &) = delete;
 
@@ -20,6 +23,8 @@ public:
   Statement &operator=(Statement &&other) noexcept = default;
 
   sqlite3_stmt *get() const { return m_stmt.get(); }
+
+  sqlite3 *get_db_handle() const;
 
   void prepare(sqlite3 *db, std::string_view sql) {
     sqlite3_stmt *raw = nullptr;

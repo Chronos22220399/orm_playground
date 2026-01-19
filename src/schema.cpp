@@ -1,8 +1,11 @@
 #include <core.hpp>
 #include <ess/orm/config/config.hpp>
+#include <ess/orm/connection_pool.h>
 #include <ess/orm/result_set_mapper.hpp>
 #include <ess/orm/row.hpp>
-#include <ess/orm/statement.hpp>
+#include <ess/orm/runtime.hpp>
+#include <ess/orm/statement.h>
+#include <thread>
 // #include <ess/orm/test/stress_test.hpp>
 #include <sqlite3.h>
 
@@ -38,20 +41,51 @@ template <size_t N> void println(const ess::orm::meta::FixedString<N> &str) {
 
 struct Foo {};
 
-void func() {
-  sqlite3 *db = nullptr;
-  int rc = sqlite3_open_v2("data/test.db", &db, SQLITE_OPEN_READWRITE, nullptr);
-  if (rc != SQLITE_OK) {
-    std::cerr << "无法打开数据库: " << sqlite3_errmsg(db) << std::endl;
-    sqlite3_close(db);
-    return;
+void test_row();
+
+void test_multithread();
+
+void init_database();
+
+int main() {
+  Goods goods{};
+  init_database();
+
+  test_row();
+
+  // test_multithread();
+
+  return 0;
+}
+
+class Context {
+  inline static std::unique_ptr<ConnectionPool> m_conn_pool = nullptr;
+  inline static std::once_flag m_init_flag{};
+
+public:
+  static Context &instance() {
+    static Context ctx;
+    std::call_once(m_init_flag, []() { init(); });
+    return ctx;
   }
+
+  static void init() {
+    m_conn_pool = std::make_unique<ConnectionPool>(config::connection_url,
+                                                   config::pool_size);
+  }
+
+  ConnectionPool &conn_pool() { return *m_conn_pool; }
+};
+
+void test_row() {
+  ConnectionPool pool =
+      ConnectionPool(config::connection_url, config::pool_size);
+  auto conn = pool.acquire();
 
   auto ddl = Goods::Schema::make_create_table_ddl();
 
-  Statement stmt;
-  stmt.prepare(db, "SELECT * FROM goods WHERE id > ?");
-  stmt.bind_params(0);
+  auto &stmt = conn->prepare_cached("SELECT * FROM goods WHERE title = ?");
+  stmt.bind_params(std::string("hello"));
 
   Goods goods{};
 
@@ -59,6 +93,35 @@ void func() {
     auto mapper = ResultSetMapper<Goods>{};
     mapper.init_mapper(stmt.get());
     auto row = mapper.map_row(stmt.get());
+
+    int id = row.get_if<int>("id").value();
+    auto title = row.get_if<std::string>("title").value();
+    auto price = row.get_if<double>("price").value();
+    auto stock = row.get_if<float>("stock").value();
+    auto status = row.get_if<int>("status").value();
+    auto enabled = row.get_if<bool>("enabled").value();
+
+    // int id = row["id"];
+    // auto title = row["title"].as<std::string>();
+    // auto price = row["price"].as<double>();
+    // auto stock = row["stock"].as<float>();
+    // auto status = row["status"].as<int>();
+    // auto enabled = row["enabled"].as<bool>();
+    fmt::println("{} {} {} {} {} {}", id, title, price, stock, status, enabled);
+    mapper.map_row(stmt.get(), goods);
+    fmt::println("{} {} {} {} {} {}", goods.id, goods.title, goods.price,
+                 goods.stock, (int)goods.status, goods.enabled);
+  }
+
+  auto conn_1 = pool.acquire();
+
+  auto &stmt_1 = conn_1->prepare_cached("SELECT * FROM goods WHERE title = ?");
+  stmt_1.bind_params(std::string("while"));
+
+  while (stmt_1.next()) {
+    auto mapper = ResultSetMapper<Goods>{};
+    mapper.init_mapper(stmt_1.get());
+    auto row = mapper.map_row(stmt_1.get());
 
     int id = row.get_if<int>("id").value();
     auto title = row.get_if<std::string>("title").value();
@@ -75,47 +138,54 @@ void func() {
     // auto status = row["status"].as<int>();
     // auto enabled = row["enabled"].as<bool>();
     fmt::println("{} {} {} {} {} {}", id, title, price, stock, status, enabled);
-    mapper.map_row(stmt.get(), goods);
+    mapper.map_row(stmt_1.get(), goods);
     fmt::println("{} {} {} {} {} {}", goods.id, goods.title, goods.price,
                  goods.stock, (int)goods.status, goods.enabled);
   }
 
-  stmt.clear_bindings();
-
   // ess::orm::config::print_config();
-
-  sqlite3_close(db);
 }
 
-int main() {
-  Goods goods{};
+void test_multithread() {
+  constexpr int NUM_THREADS = 2000; // 减少线程数，更合理
 
-  constexpr auto idx = SchemaMapper<Goods>::find_field_index("status");
-  fmt::println("{}", idx);
+  std::vector<std::thread> threads;
+  std::atomic<int> success{0};
+  std::atomic<int> failed{0};
 
-  func();
+  auto &conn_pool = Context::instance().conn_pool();
 
-  // auto goods_ddl = Goods::Schema::make_create_table_ddl();
-  // fmt::print(fmt::fg(fmt::color::aquamarine), "--- Goods DDL ---\n{}\n\n",
-  //            goods_ddl);
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    threads.emplace_back([&conn_pool, i, &success, &failed]() {
+      try {
+        auto conn = conn_pool.acquire();
+        auto &stmt = conn->prepare_cached("INSERT INTO logs (msgs) VALUES (?)");
+        stmt.bind_params(fmt::format("Thread {}", i));
+        stmt.next();
+        stmt.reset();
+        stmt.clear_bindings();
+        ++success;
+      } catch (const std::exception &e) {
+        fmt::println(stderr, "Thread {} failed: {}", i, e.what());
+        ++failed;
+      }
+    });
+  }
 
-  // ess::orm::query<Goods, "SELECT * FROM goods WHERE id > ?">(10);
+  for (auto &t : threads) {
+    t.join();
+  }
 
-  // fmt::println("{}", config::config::connection_url);
-  // fmt::println("{}", config::config::password);
+  fmt::println("成功: {}, 失败: {}", success.load(), failed.load());
+}
 
-  // transaction([] {
-  //   // 这两条语句会自动使用同一个 Connection 句柄
-  //   // 且处于同一个 BEGIN...COMMIT 块中
-  //   query<Goods, "UPDATE goods SET stock = stock - 1 WHERE id = ?">(101);
-  //   query<Goods, "INSERT INTO logs (msg) VALUES (?)">("Stock updated");
-  // });
-  //
-  // transaction([](auto &ctx) {
-  //   // 通过 ctx 句柄保证连接一致性
-  //   auto table = ctx.table<Goods>();
-  //   table.update(g.stock = g.stock - 1).where(g.id == 101);
-  // });
-
-  return 0;
+void init_database() {
+  auto conn = Context::instance().conn_pool().acquire();
+  conn->execute_raw(R"(
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            msgs TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    )");
 }

@@ -1,5 +1,8 @@
 #pragma once
+#include <cassert>
 #include <optional>
+#include <string_view>
+#include <vector>
 
 namespace ess::orm::meta {
 template <std::size_t N> struct FixedString {

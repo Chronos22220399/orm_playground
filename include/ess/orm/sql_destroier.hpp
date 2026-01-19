@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <sqlite3.h>
 
 namespace ess::orm {
@@ -21,9 +22,9 @@ struct SqliteDestroier {
   }
 };
 
-using ConnectionPtr = std::unique_ptr<sqlite3, SqliteDestroier>;
+using SqlitePtr = std::unique_ptr<sqlite3, SqliteDestroier>;
 
-using StatementPtr = std::unique_ptr<sqlite3_stmt, SqliteDestroier>;
+using StatPtr = std::unique_ptr<sqlite3_stmt, SqliteDestroier>;
 
 using ExpanedSqlPtr = std::unique_ptr<char, SqliteDestroier>;
 

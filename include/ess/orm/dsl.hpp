@@ -60,6 +60,7 @@ template <typename LField, typename RField> constexpr bool is_same_binding() {
   }
 }
 
+// TODO: 后续优化成编译期的函数从而减少模版实例化
 template <typename...> struct no_duplicate_detector;
 
 template <> struct no_duplicate_detector<> : std::true_type {};
@@ -129,6 +130,8 @@ public:
 private:
   static_assert(no_duplicated_key_field_words<Fields...>,
                 "存在多个不同Field的名称或是绑定的成员指针相同");
+  // TODO:
+  // 添加有 Not Null 后必须有 DefaultValue 或者 DefaultExpr 的约束
 };
 
 template <typename Table>

@@ -1,3 +1,0 @@
-/Users/wuming/code/orm_playground/CMakeFiles/orm.dir
-/Users/wuming/code/orm_playground/CMakeFiles/edit_cache.dir
-/Users/wuming/code/orm_playground/CMakeFiles/rebuild_cache.dir
