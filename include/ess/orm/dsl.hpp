@@ -131,7 +131,7 @@ private:
   static_assert(no_duplicated_key_field_words<Fields...>,
                 "存在多个不同Field的名称或是绑定的成员指针相同");
   // TODO:
-  // 添加有 Not Null 后必须有 DefaultValue 或者 DefaultExpr 的约束
+  // 添加 Not Null
 };
 
 template <typename Table>

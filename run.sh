@@ -1,5 +1,12 @@
 #!/bin/zsh
 
+## ===== 自动初始化第三方库 =====
+if [ ! -d "thirdparties/fmt" ]; then
+    echo "📦 正在拉取 fmt 库..."
+    mkdir -p thirdparties
+    git clone --depth 1 https://github.com/fmtlib/fmt.git thirdparties/fmt
+fi
+
 # ===== 配置 =====
 BUILD_DIR="build"
 EXECUTABLE="orm"
@@ -66,5 +73,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 ctest --test-dir ${BUILD_DIR} --output-on-failure
+
+# export ASAN_OPTIONS=print_stacktrace=1:debug=1:halt_on_error=1
 
 ./${BUILD_DIR}/${EXECUTABLE}

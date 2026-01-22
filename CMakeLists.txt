@@ -2,12 +2,10 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
   orm
-  LANGUAGES CXX
+  LANGUAGES C CXX
 )
 
-
 set(exname orm)
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -20,14 +18,31 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # )
 # FetchContent_MakeAvailable(doctest)
 
-
 message(STATUS "=== C++ Compiler Info ===")
 message(STATUS "CXX Compiler Path: ${CMAKE_CXX_COMPILER}")
 message(STATUS "CXX Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "CXX Compiler Version: ${CMAKE_CXX_COMPILER_VERSION}")
 
-find_package(fmt REQUIRED CONFIG)
-find_package(SQLite3 REQUIRED)
+function(add_external_subproject lib_folder target_name)
+  set(lib_full_path "${CMAKE_CURRENT_SOURCE_DIR}/${lib_folder}")
+  if(EXISTS "${lib_full_path}/CMakeLists.txt")
+    message(STATUS "[ORM] Configuring external library: ${target_name}")
+
+    # 特别配置 fmt
+    if ("${target_name}" MATCHES "fmt")
+      set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
+      set(FMT_TEST OFF CACHE BOOL "" FORCE)
+    endif()
+    
+    add_subdirectory(${lib_full_path})
+
+  else()
+    message(FATAL_ERROR "[ORM] Library not found in ${lib_full_path}")
+  endif()
+endfunction()
+
+add_external_subproject("thirdparties/fmt" "fmt")
+add_external_subproject("thirdparties/sqlite3" "SQLite3")
 
 file(GLOB ORM_SOURCES "src/ess/orm/*.cpp")
 
@@ -52,17 +67,17 @@ target_link_libraries(
   ${exname} 
   PRIVATE
   fmt::fmt
-  ${SQLite3_LIBRARIES}
+  SQLite3
 )
-
-set(LLVM_PREFIX "/opt/homebrew/opt/llvm")
 
 target_compile_options(
   ${exname}
   PRIVATE
-  -O2
-  -fsanitize=address
-  -stdlib=libc++
+  -O0
+  -g 
+  -fno-omit-frame-pointer
+  # -fsanitize=address
+  -fexceptions
   -save-temps=obj
   # -Rpass=inline
 )
@@ -70,10 +85,6 @@ target_compile_options(
 target_link_options(
   ${exname}
   PRIVATE
-  -fsanitize=address
-  -stdlib=libc++
-  -L${LLVM_PREFIX}/lib/c++
-  -W1,-rpath,${LLVM_PREFIX}/lib/c++
 )
 
 # target_precompile_headers(

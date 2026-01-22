@@ -3,7 +3,7 @@
 #include <ess/orm/connection_pool.h>
 #include <ess/orm/dialect.hpp>
 #include <ess/orm/dsl.hpp>
-#include <ess/orm/row.hpp>
+#include <ess/orm/row.h>
 #include <fmt/format.h>
 
 namespace ess::orm {

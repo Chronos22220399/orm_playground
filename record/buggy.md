@@ -190,3 +190,82 @@ template <typename T> T get_converted() const {
 > 其余更改则是逻辑上的一点优化
 
 ---
+
+## 异常无法正常捕获
+
+#### 问题出处
+
+```cpp
+Proxy operator[](std::string const &key) const {
+  auto it = m_data.find(key);
+  if (it == m_data.end()) {
+    std::string err_msg = "column not found: " + key;
+    throw std::out_of_range(err_msg);
+  }
+  return {it->second};
+}
+
+try {
+  throw std::out_of_range("正常的");
+} catch (std::exception &e) {
+  fmt::println("能正常捕获的错误: {}", e.what());
+}
+
+Row row;
+
+try {
+  auto v = row["missing"];
+} catch (const std::exception &e) {
+  std::cout << "caught: " << e.what() << '\n';
+}
+
+
+```
+
+错误如下：
+
+```cpp
+能正常捕获的错误: 正常的
+libc++abi: terminating due to uncaught exception of type std::out_of_range: colu
+mn not found: missing
+```
+
+```cpp
+❯ lldb ./build/orm
+(lldb) target create "./build/orm"
+Current executable set to '/Users/wuming/code/orm_playground/build/orm' (arm64).
+(lldb) run
+Process 93737 launched: '/Users/wuming/code/orm_playground/build/orm' (arm64)
+能正常捕获的错误: 正常的
+libc++abi: terminating due to uncaught exception of type std::out_of_range: colu
+mn not found: missing
+Process 93737 stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGABRT
+    frame #0: 0x000000019c666a60 libsystem_kernel.dylib`__pthread_kill + 8
+libsystem_kernel.dylib`__pthread_kill:
+->  0x19c666a60 <+8>:  b.lo   0x19c666a80    ; <+40>
+    0x19c666a64 <+12>: pacibsp
+    0x19c666a68 <+16>: stp    x29, x30, [sp, #-0x10]!
+    0x19c666a6c <+20>: mov    x29, sp
+(lldb) bt
+* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGABRT
+  * frame #0: 0x000000019c666a60 libsystem_kernel.dylib`__pthread_kill + 8
+    frame #1: 0x000000019c69ec20 libsystem_pthread.dylib`pthread_kill + 288
+    frame #2: 0x000000019c5aba30 libsystem_c.dylib`abort + 180
+    frame #3: 0x0000000100623a74 libc++abi.1.dylib`__abort_message + 92
+    frame #4: 0x00000001005fcb70 libc++abi.1.dylib`demangling_terminate_handler(
+) + 244
+    frame #5: 0x000000010061ddc0 libc++abi.1.dylib`std::__terminate(void (*)())
++ 12
+    frame #6: 0x0000000100623138 libc++abi.1.dylib`__gxx_personality_v0 + 1488
+    frame #7: 0x00000001a92e80a0 libunwind.dylib`unwind_phase2 + 596
+    frame #8: 0x00000001a92e8240 libunwind.dylib`_Unwind_Resume + 252
+    frame #9: 0x0000000100004ad4 orm`ess::orm::Row::operator[](this=0x000000016f
+dfd9a0, key="missing") const at allocate.h:0:10 [opt]
+    frame #10: 0x0000000100004884 orm`main at schema.cpp:64:14 [opt]
+    frame #11: 0x000000019c3160e0 dyld`start + 2360
+(lldb)
+orm │ signal SIGABRT
+```
+
+经过测试，将 `std::out_of_range(err_msg)` 改为 `std::out_of_range("xxx")` [任意编译期确定的字符串常量] 就不会出现问题

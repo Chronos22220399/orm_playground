@@ -46,9 +46,9 @@ public:
 
   Row() = default;
 
-  Row(Row &&) noexcept = default;
+  Row(Row &&) = default;
 
-  Row &operator=(Row &&) noexcept = default;
+  Row &operator=(Row &&) = default;
 
   Row(Row const &) = default;
 
@@ -63,7 +63,8 @@ public:
   Proxy operator[](std::string const &key) const {
     auto it = m_data.find(key);
     if (it == m_data.end()) {
-      throw std::out_of_range("column not found: " + key);
+      std::string err_msg = "column not found: " + key;
+      throw std::out_of_range(err_msg);
     }
     return {it->second};
   }
@@ -71,7 +72,12 @@ public:
   template <typename T> std::optional<T> get_if(std::string const &key) const {
     auto it = m_data.find(key);
     if (it != m_data.end()) {
+      // TODO: 需要重新考虑异常安全相关问题
+      // try {
       return Proxy{it->second}.template as<T>();
+      // } catch (const std::exception &e) {
+      //   return std::nullopt;
+      // }
     }
     return std::nullopt;
   }
@@ -97,5 +103,7 @@ public:
   auto begin() const noexcept { return m_data.begin(); }
 
   auto end() const noexcept { return m_data.end(); }
+
+private:
 };
 } // namespace ess::orm

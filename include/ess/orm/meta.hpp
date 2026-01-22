@@ -13,6 +13,11 @@ template <std::size_t N> struct FixedString {
       m_str[i] = str[i];
   }
 
+  constexpr FixedString(const FixedString<N> &s) {
+    for (int i = 0; i < N; ++i)
+      m_str[i] = s[i];
+  }
+
   constexpr FixedString() {
     for (int i = 0; i < N; ++i)
       m_str[i] = '\0';
@@ -43,6 +48,30 @@ template <std::size_t N> struct FixedString {
 };
 
 template <FixedString Str> constexpr auto operator""_fs() { return Str; }
+
+template <std::floating_point T> struct FloatingPoint {
+  T value;
+  constexpr FloatingPoint(T v) : value(v) {}
+  constexpr operator T() const { return value; }
+};
+
+template <std::floating_point T> FloatingPoint(T) -> FloatingPoint<T>;
+
+constexpr auto operator""_fp(long double v) {
+  return FloatingPoint{static_cast<double>(v)};
+}
+
+constexpr auto operator""_fp(unsigned long long v) {
+  return FloatingPoint{static_cast<double>(v)};
+}
+
+constexpr auto operator""_fpf(long double v) {
+  return FloatingPoint{static_cast<float>(v)};
+}
+
+constexpr auto operator""_fpf(unsigned long long v) {
+  return FloatingPoint{static_cast<float>(v)};
+}
 
 // 比较字符串
 template <std::size_t N1, std::size_t N2>
@@ -334,6 +363,11 @@ template <> struct sql_value_from_type<SqlNull> {
   using type = sql_null;
 };
 
+template <std::floating_point T>
+struct sql_value_from_type<meta::FloatingPoint<T>> {
+  using type = sql_floating;
+};
+
 template <auto Value> struct sql_value_tag {
   using type =
       typename sql_value_from_type<std::remove_cvref_t<decltype(Value)>>::type;
@@ -401,5 +435,4 @@ static std::string join(const std::vector<std::string> &elements,
   }
   return result;
 }
-
 } // namespace ess::orm::meta

@@ -2,7 +2,6 @@
 #include <ess/orm/config/config.hpp>
 #include <ess/orm/connection_pool.h>
 #include <ess/orm/result_set_mapper.hpp>
-#include <ess/orm/row.hpp>
 #include <ess/orm/runtime.hpp>
 #include <ess/orm/statement.h>
 #include <thread>
@@ -11,6 +10,8 @@
 
 using namespace ess::orm;
 using namespace ess::orm::meta;
+using namespace ess::orm::dsl;
+using namespace ess::orm::attribute;
 
 enum class GoodsStatus : int { Normal = 0, Disabled, Deleted };
 
@@ -22,17 +23,15 @@ struct Goods {
   GoodsStatus status = GoodsStatus::Normal;
   bool enabled = true;
 
-  using Schema = dsl::Schema<
-      "goods",
-      dsl::Field<"id", &Goods::id, attribute::PrimaryKey,
-                 attribute::AutoIncrement, attribute::DefaultValue<1>>,
-      dsl::Field<"title", &Goods::title,
-                 attribute::DefaultValue<"untitled"_fs>>,
-      dsl::Field<"price", &Goods::price, attribute::DefaultValue<0.0>>,
-      dsl::Field<"stock", &Goods::stock, attribute::DefaultValue<0>>,
-      dsl::Field<"status", &Goods::status,
-                 attribute::DefaultValue<GoodsStatus::Deleted>>,
-      dsl::Field<"enabled", &Goods::enabled, attribute::DefaultValue<true>>>;
+  using Schema = Schema<
+      "goods", //
+      Field<"id", &Goods::id, PrimaryKey, AutoIncrement>,
+      Field<"title", &Goods::title, DefaultValue<"untitled"_fs>>,
+      Field<"price", &Goods::price, DefaultValue<0.0_fp>>,
+      Field<"stock", &Goods::stock, DefaultValue<0>>,
+      Field<"status", &Goods::status, DefaultValue<GoodsStatus::Deleted>>,
+      Field<"enabled", &Goods::enabled, DefaultValue<true>> //
+      >;
 };
 
 template <size_t N> void println(const ess::orm::meta::FixedString<N> &str) {
@@ -47,13 +46,51 @@ void test_multithread();
 
 void init_database();
 
+void test_row_asan_safety();
+
+struct Proxy_ {
+  int v;
+};
+
+struct Row_ {
+  std::unordered_map<std::string, int> m_data;
+
+  Proxy_ operator[](std::string const &key) {
+    auto it = m_data.find(key);
+
+    std::string err_msg = "column not found: " + key;
+    if (it == m_data.end()) {
+      std::runtime_error ex(err_msg);
+      throw ex;
+    }
+    return {it->second};
+  }
+};
+
 int main() {
+  using t = attribute::DefaultValue<10.0_fp>;
+  // static_assert(concepts::floating_point_wrapper<decltype(10.0_fp)>);
   Goods goods{};
+  Goods::Schema::make_create_table_ddl();
   init_database();
-
   test_row();
+  try {
+    throw std::out_of_range("正常的");
+  } catch (std::exception &e) {
+    fmt::println("能正常捕获的错误: {}", e.what());
+  }
 
-  // test_multithread();
+  Row_ row;
+
+  try {
+    auto v = row["missing"];
+  } catch (const std::exception &e) {
+    std::cout << "caught: " << e.what() << '\n';
+  }
+
+  test_multithread();
+
+  test_row_asan_safety();
 
   return 0;
 }
@@ -147,7 +184,7 @@ void test_row() {
 }
 
 void test_multithread() {
-  constexpr int NUM_THREADS = 2000; // 减少线程数，更合理
+  constexpr int NUM_THREADS = 100; // 减少线程数，更合理
 
   std::vector<std::thread> threads;
   std::atomic<int> success{0};
@@ -188,4 +225,51 @@ void init_database() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     )");
+}
+
+void test_row_asan_safety() {
+  std::cerr << "\n--- 开始 Row 类型安全与 ASan 测试 ---\n";
+  std::cerr.flush();
+
+  using namespace ess::orm;
+  Row row;
+  row.add_column("id", 100LL);
+  row.add_column("title", std::string("C++ ORM"));
+
+  // 场景 3：访问不存在的列
+  std::cerr << " - 场景 3: 开始\n";
+  std::cerr.flush();
+
+  std::cerr << "\n[MAIN] About to enter try block\n";
+  std::cerr.flush();
+
+  try {
+    std::cerr << " - 场景 3: 即将调用 row[\"missing_column\"]\n";
+    std::cerr.flush();
+
+    std::cerr << "[MAIN] About to call operator[]\n";
+    std::cerr.flush();
+
+    row["missing_column"];
+
+    std::cerr << "不应该到这里\n";
+  } catch (const std::out_of_range &e) {
+    std::cerr << "[MAIN] Caught std::out_of_range!\n";
+    std::cerr << "✓ 捕��到 std::out_of_range:  " << e.what() << "\n";
+    std::cerr.flush();
+  } catch (const std::exception &e) {
+    std::cerr << "[MAIN] Caught std:: exception!\n";
+    std::cerr << "✓ 捕获到其他异常: " << e.what() << "\n";
+    std::cerr.flush();
+  } catch (...) {
+    std::cerr << "[MAIN] Caught unknown exception!\n";
+    std::cerr.flush();
+    std::cerr << "✓ 捕获到未知异常\n";
+  }
+
+  std::cerr << "[MAIN] Exiting try-catch\n";
+  std::cerr.flush();
+
+  std::cerr << " - 场景 3 完成\n";
+  std::cerr.flush();
 }

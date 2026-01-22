@@ -1,6 +1,6 @@
 #pragma once
 #include <ess/orm/dsl.hpp>
-#include <ess/orm/row.hpp>
+#include <ess/orm/row.h>
 
 namespace ess::orm {
 
