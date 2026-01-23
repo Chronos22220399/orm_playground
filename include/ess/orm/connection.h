@@ -29,6 +29,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
     configure();
   }
 
+  // TODO: 后续将 configure 拆开，由配置结果来选择开启的模式
   void configure() {
     execute_raw("PRAGMA journal_mode=WAL;");   // WAL 模式
     execute_raw("PRAGMA busy_timeout=30000;"); // 等待 30 秒

@@ -6,7 +6,9 @@ namespace ess::orm {
 using DBValue = std::variant<int, long long, double, std::string, bool>;
 
 class Row {
-  std::unordered_map<std::string, DBValue> m_data;
+  std::unordered_map<std::string, DBValue, std::hash<std::string_view>,
+                     std::equal_to<>>
+      m_data;
 
 public:
   struct Proxy {

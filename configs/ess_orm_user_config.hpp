@@ -9,3 +9,10 @@ struct UserConfig {
 
   static constexpr std::string password = "xxx";
 };
+
+// struct MainDB {
+//
+//   static constexpr std::string connection_url = "./data/test.db";
+//
+//   static constexpr std::string password = "xxx";
+// };

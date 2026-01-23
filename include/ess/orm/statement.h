@@ -6,6 +6,7 @@ namespace ess::orm {
 class Connection;
 
 class Statement {
+  using StatPtr = std::unique_ptr<sqlite3_stmt, SqliteDestroier>;
   // 通过 weak_ptr 保证 m_stmt 在 sqlite3* 之前被释放（Statement 在 Connection
   // 之前）
   std::weak_ptr<Connection> m_conn_ref;
@@ -46,6 +47,7 @@ public:
       (bind_one(I + 1, args), ...);
     }(std::make_index_sequence<count>{});
 
+    // TODO: debug 模式下使用
     auto expanded = expanded_sql();
     fmt::println("SQL: {}", expanded);
   }

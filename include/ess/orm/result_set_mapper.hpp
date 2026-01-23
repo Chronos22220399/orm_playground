@@ -52,8 +52,7 @@ public:
 };
 
 template <dsl::table_type Table> struct ResultSetMapper {
-  inline static std::vector<int> m_col_to_field_map{};
-  inline static std::once_flag m_init_flag{};
+  std::vector<int> m_col_to_field_map{};
   bool is_inialized = false;
   using schema_mapper = SchemaMapper<Table>;
 

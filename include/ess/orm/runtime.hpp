@@ -8,8 +8,6 @@
 
 namespace ess::orm {
 
-struct TransactionGuard {};
-
 template <typename Func> auto transaction(Func &&func) {}
 
 template <typename Table, meta::FixedString SQL> auto query(auto &&...args) {

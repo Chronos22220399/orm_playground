@@ -5,8 +5,6 @@
 
 namespace ess::orm::config {
 
-struct Database {};
-
 struct DefaultConfig {
 
   using dialect = dialect::Sqlite3;
@@ -18,7 +16,7 @@ struct DefaultConfig {
   // };
 
   // TODO: 添加多个数据库
-  using databases = std::tuple<Database>;
+  using databases = std::tuple<>;
 
   static constexpr std::string connection_url = "";
 
@@ -29,6 +27,10 @@ struct DefaultConfig {
   static constexpr std::size_t pool_size = 10;
 
   static constexpr std::chrono::milliseconds query_timeout{3000};
+};
+
+struct DefaultDB {
+  static constexpr std::string connection_url = "";
 };
 
 } // namespace ess::orm::config

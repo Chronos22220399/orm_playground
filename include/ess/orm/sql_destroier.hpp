@@ -24,8 +24,6 @@ struct SqliteDestroier {
 
 using SqlitePtr = std::unique_ptr<sqlite3, SqliteDestroier>;
 
-using StatPtr = std::unique_ptr<sqlite3_stmt, SqliteDestroier>;
-
 using ExpanedSqlPtr = std::unique_ptr<char, SqliteDestroier>;
 
 } // namespace ess::orm

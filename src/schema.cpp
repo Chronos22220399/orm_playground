@@ -1,6 +1,7 @@
 #include <core.hpp>
 #include <ess/orm/config/config.hpp>
 #include <ess/orm/connection_pool.h>
+#include <ess/orm/context.hpp>
 #include <ess/orm/result_set_mapper.hpp>
 #include <ess/orm/runtime.hpp>
 #include <ess/orm/statement.h>
@@ -48,49 +49,24 @@ void init_database();
 
 void test_row_asan_safety();
 
-struct Proxy_ {
-  int v;
-};
-
-struct Row_ {
-  std::unordered_map<std::string, int> m_data;
-
-  Proxy_ operator[](std::string const &key) {
-    auto it = m_data.find(key);
-
-    std::string err_msg = "column not found: " + key;
-    if (it == m_data.end()) {
-      std::runtime_error ex(err_msg);
-      throw ex;
-    }
-    return {it->second};
-  }
-};
-
 int main() {
   using t = attribute::DefaultValue<10.0_fp>;
   // static_assert(concepts::floating_point_wrapper<decltype(10.0_fp)>);
   Goods goods{};
-  Goods::Schema::make_create_table_ddl();
-  init_database();
-  test_row();
-  try {
-    throw std::out_of_range("正常的");
-  } catch (std::exception &e) {
-    fmt::println("能正常捕获的错误: {}", e.what());
-  }
+  // Goods::Schema::make_create_table_ddl();
+  // init_database();
+  // test_row();
 
-  Row_ row;
-
+  Row row;
   try {
     auto v = row["missing"];
   } catch (const std::exception &e) {
     std::cout << "caught: " << e.what() << '\n';
   }
 
-  test_multithread();
-
-  test_row_asan_safety();
+  // test_multithread();
+  //
+  // test_row_asan_safety();
 
   return 0;
 }

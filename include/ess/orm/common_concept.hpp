@@ -62,4 +62,9 @@ template <> struct sql_value_impl<meta::SqlNow> : std::true_type {};
 template <typename T>
 concept sql_default_value = detail::sql_value_impl<T>::value;
 
+template <typename T>
+concept database_type = requires {
+  { T::connection_url } -> std::convertible_to<std::string>;
+};
+
 } // namespace ess::orm::concepts
