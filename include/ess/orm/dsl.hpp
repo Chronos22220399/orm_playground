@@ -134,7 +134,4 @@ private:
   // 添加 Not Null
 };
 
-template <typename Table>
-concept table_type = requires { typename Table::Schema; };
-
 } // namespace ess::orm::dsl

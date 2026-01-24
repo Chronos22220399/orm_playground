@@ -22,7 +22,7 @@ inline std::string get_column_name(sqlite3_stmt *stmt, int index) {
   return reinterpret_cast<const char *>(sqlite3_column_name(stmt, index));
 }
 
-template <dsl::table_type Table> struct SchemaMapper {
+template <concepts::table_type Table> struct SchemaMapper {
 private:
   using schema = Table::Schema;
   using field_tuple = schema::fields;
@@ -51,7 +51,7 @@ public:
   }
 };
 
-template <dsl::table_type Table> struct ResultSetMapper {
+template <concepts::table_type Table> struct ResultSetMapper {
   std::vector<int> m_col_to_field_map{};
   bool is_inialized = false;
   using schema_mapper = SchemaMapper<Table>;

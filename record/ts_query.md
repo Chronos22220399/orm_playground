@@ -88,3 +88,23 @@
 #### private:
 
 - m_conn: a connection of registered db
+  > type: shared_ptr<Connection>
+- m_nesting_level: record the depth of transaction level
+  > type: int&
+- m_my_level:
+  > type: int
+- m_committed
+  > type: bool
+
+### funcs:
+
+#### public:
+
+- Transaction(conn, nesing)
+- ~Transaction()
+- begin()
+- commit()
+- rollback()
+- connection()
+- shared_connection()
+- query(args)

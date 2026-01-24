@@ -1,5 +1,6 @@
 #pragma once
 #include <std.hpp>
+#include <chrono>
 #include <ess/orm/connection.h>
 
 namespace ess::orm {

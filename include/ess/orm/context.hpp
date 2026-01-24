@@ -1,7 +1,10 @@
 #pragma once
 #include <ess/orm/common_concept.hpp>
+#include <ess/orm/config/config.hpp>
 #include <ess/orm/config/default.hpp>
 #include <ess/orm/connection.h>
+#include <ess/orm/connection_pool.h>
+#include <ess/orm/statement.h>
 #include <thread>
 #include <typeindex>
 #include <unordered_map>
@@ -83,17 +86,24 @@ public:
 class Context {
   std::unordered_map<std::type_index, std::unique_ptr<ConnectionPool>> m_pools =
       {};
+  std::once_flag m_init_flag{};
 
   Context() = default;
 
 public:
-  template <concepts::database_type DB>
+  static Context &instance() {
+    static Context ctx;
+    return ctx;
+  }
+
+  template <concepts::database_type DB = config::DefaultDB>
   void register_db(std::string_view connection_url, std::size_t pool_size) {
     auto pool = std::make_unique<ConnectionPool>(connection_url, pool_size);
     m_pools[std::type_index(typeid(DB))] = std::move(pool);
   }
 
-  template <concepts::database_type DB> ConnectionPool &pool() {
+  template <concepts::database_type DB = config::DefaultDB>
+  ConnectionPool &conn_pool() {
     auto it = m_pools.find(std::type_index(typeid(DB)));
     if (it == m_pools.end()) {
       // TODO:
@@ -107,9 +117,10 @@ public:
 
   // TODO: 后续自动注册用
   void init() {
-    // register_db
+    std::call_once(m_init_flag, [this]() {
+      register_db(config::connection_url, config::pool_size);
+    });
   }
 };
 
-//
 } // namespace ess::orm

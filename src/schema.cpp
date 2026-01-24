@@ -2,9 +2,11 @@
 #include <ess/orm/config/config.hpp>
 #include <ess/orm/connection_pool.h>
 #include <ess/orm/context.hpp>
+#include <ess/orm/parser.hpp>
 #include <ess/orm/result_set_mapper.hpp>
 #include <ess/orm/runtime.hpp>
 #include <ess/orm/statement.h>
+#include <ess/orm/transaction.hpp>
 #include <thread>
 // #include <ess/orm/test/stress_test.hpp>
 #include <sqlite3.h>
@@ -52,17 +54,28 @@ void test_row_asan_safety();
 int main() {
   using t = attribute::DefaultValue<10.0_fp>;
   // static_assert(concepts::floating_point_wrapper<decltype(10.0_fp)>);
-  Goods goods{};
+  // Goods goods{};
   // Goods::Schema::make_create_table_ddl();
   // init_database();
   // test_row();
+  static_assert(parser::begin_with<meta::fs_to_upper("select"_fs)>() ==
+                parser::SqlType::SELECT);
 
-  Row row;
-  try {
-    auto v = row["missing"];
-  } catch (const std::exception &e) {
-    std::cout << "caught: " << e.what() << '\n';
-  }
+  Context::instance().init();
+  auto &pool = Context::instance().conn_pool();
+  int level = 0;
+  Transaction tx(pool.acquire(), level);
+  tx.begin();
+  std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods">();
+  tx.commit();
+  std::cout << res.size() << std::endl;
+
+  // Row row;
+  // try {
+  //   auto v = row["missing"];
+  // } catch (const std::exception &e) {
+  //   std::cout << "caught: " << e.what() << '\n';
+  // }
 
   // test_multithread();
   //
@@ -71,24 +84,24 @@ int main() {
   return 0;
 }
 
-class Context {
-  inline static std::unique_ptr<ConnectionPool> m_conn_pool = nullptr;
-  inline static std::once_flag m_init_flag{};
-
-public:
-  static Context &instance() {
-    static Context ctx;
-    std::call_once(m_init_flag, []() { init(); });
-    return ctx;
-  }
-
-  static void init() {
-    m_conn_pool = std::make_unique<ConnectionPool>(config::connection_url,
-                                                   config::pool_size);
-  }
-
-  ConnectionPool &conn_pool() { return *m_conn_pool; }
-};
+// class Context {
+//   inline static std::unique_ptr<ConnectionPool> m_conn_pool = nullptr;
+//   inline static std::once_flag m_init_flag{};
+//
+// public:
+//   static Context &instance() {
+//     static Context ctx;
+//     std::call_once(m_init_flag, []() { init(); });
+//     return ctx;
+//   }
+//
+//   static void init() {
+//     m_conn_pool = std::make_unique<ConnectionPool>(config::connection_url,
+//                                                    config::pool_size);
+//   }
+//
+//   ConnectionPool &conn_pool() { return *m_conn_pool; }
+// };
 
 void test_row() {
   ConnectionPool pool =

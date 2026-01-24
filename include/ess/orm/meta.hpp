@@ -115,10 +115,10 @@ constexpr FindResult fs_find(FixedString<N> str, char c) {
 
 // 子串
 template <std::size_t Pos, std::size_t Len, std::size_t N>
-constexpr std::optional<FixedString<Len + 1>> fs_substr(FixedString<N> str) {
-  if (Pos >= N || Pos + Len > N - 1) {
-    return std::nullopt;
-  }
+constexpr FixedString<Len + 1> fs_substr(FixedString<N> str) {
+  static_assert(Pos < N, "Substring position out of range");
+  static_assert(Pos + Len < N, "Substring out of range");
+
   FixedString<Len + 1> result{};
   for (std::size_t i = 0; i < Len; ++i) {
     result[i] = str[Pos + i];

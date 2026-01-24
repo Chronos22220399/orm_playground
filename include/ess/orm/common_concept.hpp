@@ -67,4 +67,7 @@ concept database_type = requires {
   { T::connection_url } -> std::convertible_to<std::string>;
 };
 
+template <typename Table>
+concept table_type = requires { typename Table::Schema; };
+
 } // namespace ess::orm::concepts

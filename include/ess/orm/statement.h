@@ -12,6 +12,22 @@ class Statement {
   std::weak_ptr<Connection> m_conn_ref;
   StatPtr m_stmt;
 
+  class StatementGuard {
+    Statement &m_stmt;
+
+  public:
+    explicit StatementGuard(Statement &stmt) : m_stmt(stmt) {}
+
+    StatementGuard(StatementGuard const &) = delete;
+
+    StatementGuard &operator=(StatementGuard const &) = delete;
+
+    ~StatementGuard() {
+      m_stmt.reset();
+      m_stmt.clear_bindings();
+    }
+  };
+
 public:
   Statement() = default;
 
@@ -78,6 +94,8 @@ public:
     }
     return true;
   }
+
+  [[nodiscard]] StatementGuard scope_guard() { return StatementGuard{*this}; }
 
 private:
   void bind_one(int index, int param) {
