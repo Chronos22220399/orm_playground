@@ -51,6 +51,16 @@ void init_database();
 
 void test_row_asan_safety();
 
+struct LoggerDB {
+  static constexpr std::string connection_url = "./data/test1.db";
+  static constexpr std::size_t pool_size = 10;
+};
+
+struct Log {
+  int id;
+  using Schema = Schema<"log", Field<"id", &Log::id>>;
+};
+
 int main() {
   using t = attribute::DefaultValue<10.0_fp>;
   // static_assert(concepts::floating_point_wrapper<decltype(10.0_fp)>);
@@ -58,17 +68,64 @@ int main() {
   // Goods::Schema::make_create_table_ddl();
   // init_database();
   // test_row();
+  Context::instance().register_db<LoggerDB>();
+  Context::instance().register_db<config::DefaultDB>();
   static_assert(parser::begin_with<meta::fs_to_upper("select"_fs)>() ==
                 parser::SqlType::SELECT);
 
-  Context::instance().init();
-  auto &pool = Context::instance().conn_pool();
-  int level = 0;
-  Transaction tx(pool.acquire(), level);
-  tx.begin();
-  std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods">();
-  tx.commit();
-  std::cout << res.size() << std::endl;
+  transaction([](auto &tx_1) {
+    transaction([](Transaction<> &tx) {
+      transaction([](Transaction<> &tx) {
+        std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods ">();
+        for (auto &g : res) {
+          std::cout << g.title << std::endl;
+        }
+      });
+      transaction([](Transaction<> &tx) {
+        std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods ">();
+        for (auto &g : res) {
+          std::cout << g.title << std::endl;
+        }
+      });
+    });
+    transaction<LoggerDB>([](auto &tx) {
+      transaction<LoggerDB>([](auto &tx) {
+        transaction([](Transaction<> &tx) {
+          std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods ">();
+          for (auto &g : res) {
+            std::cout << g.title << std::endl;
+          }
+        });
+        transaction<LoggerDB>([](auto &tx_2) {
+          std::vector<Log> res =
+              tx_2.template query<Log, "SELECT * FROM log">();
+          for (auto &g : res) {
+            std::cout << g.id << std::endl;
+          }
+        });
+      });
+      transaction([](Transaction<> &tx) {
+        std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods ">();
+        for (auto &g : res) {
+          std::cout << g.title << std::endl;
+        }
+      });
+      transaction<LoggerDB>([](auto &tx_2) {
+        std::vector<Log> res = tx_2.template query<Log, "SELECT * FROM log">();
+        for (auto &g : res) {
+          std::cout << g.id << std::endl;
+        }
+      });
+    });
+  });
+
+  // Context::instance().init();
+  // auto &pool = Context::instance().conn_pool();
+  // int level = 0;
+  // Transaction tx(pool.acquire().shared(), level);
+  // auto guard = tx.scope_guard();
+  // std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods">();
+  // std::cout << res.size() << std::endl;
 
   // Row row;
   // try {

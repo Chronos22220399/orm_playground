@@ -59,9 +59,9 @@ public:
 
   void execute_raw(std::string const &sql) {
     char *err_msg = nullptr;
-    if (sqlite3_exec(m_db.get(), sql.c_str(), nullptr, nullptr, nullptr) !=
+    if (sqlite3_exec(m_db.get(), sql.c_str(), nullptr, nullptr, &err_msg) !=
         SQLITE_OK) {
-      std::string err(err_msg);
+      std::string err = err_msg ? err_msg : sqlite3_errmsg(m_db.get());
       sqlite3_free(err_msg);
       throw std::runtime_error("SQL Error: " + err);
     }

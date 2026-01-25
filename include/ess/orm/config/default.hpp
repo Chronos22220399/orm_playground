@@ -30,7 +30,8 @@ struct DefaultConfig {
 };
 
 struct DefaultDB {
-  static constexpr std::string connection_url = "";
+  static constexpr std::string connection_url = "./data/test.db";
+  static constexpr std::size_t pool_size = 10;
 };
 
 } // namespace ess::orm::config
