@@ -8,8 +8,6 @@
 #include <typeindex>
 #include <unordered_map>
 
-struct MainDB {};
-
 namespace ess::orm {
 
 // 全局 Context
@@ -18,9 +16,14 @@ class Context {
       {};
   std::once_flag m_init_flag{};
 
-  Context() {
-    // init();
-  };
+  Context() { init(); };
+
+  template <concepts::database_type DB> void register_db() {
+    using trait = config::DatabaseTrait<DB, config::default_db_config>;
+    auto pool = std::make_unique<ConnectionPool>(trait::connection_url,
+                                                 trait::pool_size);
+    m_pools[std::type_index(typeid(DB))] = std::move(pool);
+  }
 
 public:
   static Context &instance() {
@@ -30,10 +33,16 @@ public:
 
   // TODO: 后续自动注册用
   void init() {
-    // std::call_once(m_init_flag, [this]() { register_db(); });
+    std::call_once(m_init_flag, [this]() {
+      // init database
+      using databases = config::databases;
+      [this]<std::size_t... I>(std::index_sequence<I...>) {
+        (register_db<std::tuple_element_t<I, databases>>(), ...);
+      }(std::make_index_sequence<config::database_count>{});
+    });
   }
 
-  template <concepts::database_type DB = config::DefaultDB>
+  template <concepts::database_type DB = config::default_db>
   ConnectionPool &conn_pool() {
     auto it = m_pools.find(std::type_index(typeid(DB)));
     if (it == m_pools.end()) {
@@ -44,12 +53,6 @@ public:
                                "Context::instance().init() first.");
     }
     return *(it->second);
-  }
-
-  template <concepts::database_type DB = config::DefaultDB> void register_db() {
-    auto pool =
-        std::make_unique<ConnectionPool>(DB::connection_url, DB::pool_size);
-    m_pools[std::type_index(typeid(DB))] = std::move(pool);
   }
 };
 

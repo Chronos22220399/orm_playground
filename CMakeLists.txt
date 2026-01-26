@@ -76,7 +76,7 @@ target_compile_options(
   -O0
   -g 
   -fno-omit-frame-pointer
-  # -fsanitize=address
+  -fsanitize=address
   -fexceptions
   -save-temps=obj
   # -Rpass=inline
@@ -85,6 +85,7 @@ target_compile_options(
 target_link_options(
   ${exname}
   PRIVATE
+  -fsanitize=address
 )
 
 # target_precompile_headers(

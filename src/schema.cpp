@@ -18,6 +18,11 @@ using namespace ess::orm::attribute;
 
 enum class GoodsStatus : int { Normal = 0, Disabled, Deleted };
 
+void test_row();
+void test_multithread();
+void init_database();
+void test_row_asan_safety();
+
 struct Goods {
   long long id = 0;
   std::string title;
@@ -26,6 +31,7 @@ struct Goods {
   GoodsStatus status = GoodsStatus::Normal;
   bool enabled = true;
 
+  using Database = config::default_db;
   using Schema = Schema<
       "goods", //
       Field<"id", &Goods::id, PrimaryKey, AutoIncrement>,
@@ -37,132 +43,34 @@ struct Goods {
       >;
 };
 
-template <size_t N> void println(const ess::orm::meta::FixedString<N> &str) {
-  fmt::println("{}", std::string_view(str));
-}
-
-struct Foo {};
-
-void test_row();
-
-void test_multithread();
-
-void init_database();
-
-void test_row_asan_safety();
-
-struct LoggerDB {
-  static constexpr std::string connection_url = "./data/test1.db";
-  static constexpr std::size_t pool_size = 10;
-};
-
 struct Log {
   int id;
+
+  using Database = config::LoggerDB;
   using Schema = Schema<"log", Field<"id", &Log::id>>;
 };
 
 int main() {
-  using t = attribute::DefaultValue<10.0_fp>;
-  // static_assert(concepts::floating_point_wrapper<decltype(10.0_fp)>);
-  // Goods goods{};
-  // Goods::Schema::make_create_table_ddl();
-  // init_database();
-  // test_row();
-  Context::instance().register_db<LoggerDB>();
-  Context::instance().register_db<config::DefaultDB>();
-  static_assert(parser::begin_with<meta::fs_to_upper("select"_fs)>() ==
-                parser::SqlType::SELECT);
+  using namespace ess::orm::config;
 
-  transaction([](auto &tx_1) {
-    transaction([](Transaction<> &tx) {
-      transaction([](Transaction<> &tx) {
-        std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods ">();
-        for (auto &g : res) {
-          std::cout << g.title << std::endl;
-        }
-      });
-      transaction([](Transaction<> &tx) {
-        std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods ">();
-        for (auto &g : res) {
-          std::cout << g.title << std::endl;
-        }
-      });
+  auto res = ess::orm::query<Goods, "SELECT * FROM goods">();
+
+  transaction<Read>([](auto &txs) {
+    transaction<Read>([](auto &tx) {
+      std::vector<Row> res =
+          tx.template query_rows<Goods, "SELECT * FROM goods ">();
+      for (auto &g : res) {
+        std::cout << g["id"].as<int>() << std::endl;
+      }
     });
-    transaction<LoggerDB>([](auto &tx) {
-      transaction<LoggerDB>([](auto &tx) {
-        transaction([](Transaction<> &tx) {
-          std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods ">();
-          for (auto &g : res) {
-            std::cout << g.title << std::endl;
-          }
-        });
-        transaction<LoggerDB>([](auto &tx_2) {
-          std::vector<Log> res =
-              tx_2.template query<Log, "SELECT * FROM log">();
-          for (auto &g : res) {
-            std::cout << g.id << std::endl;
-          }
-        });
-      });
-      transaction([](Transaction<> &tx) {
-        std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods ">();
-        for (auto &g : res) {
-          std::cout << g.title << std::endl;
-        }
-      });
-      transaction<LoggerDB>([](auto &tx_2) {
-        std::vector<Log> res = tx_2.template query<Log, "SELECT * FROM log">();
-        for (auto &g : res) {
-          std::cout << g.id << std::endl;
-        }
-      });
-    });
+    transaction<Write, LoggerDB>(
+        [](auto &tx) { tx.template query<Log, "SELECT * FROM log">(); });
   });
-
-  // Context::instance().init();
-  // auto &pool = Context::instance().conn_pool();
-  // int level = 0;
-  // Transaction tx(pool.acquire().shared(), level);
-  // auto guard = tx.scope_guard();
-  // std::vector<Goods> res = tx.query<Goods, "SELECT * FROM goods">();
-  // std::cout << res.size() << std::endl;
-
-  // Row row;
-  // try {
-  //   auto v = row["missing"];
-  // } catch (const std::exception &e) {
-  //   std::cout << "caught: " << e.what() << '\n';
-  // }
-
-  // test_multithread();
-  //
-  // test_row_asan_safety();
-
   return 0;
 }
 
-// class Context {
-//   inline static std::unique_ptr<ConnectionPool> m_conn_pool = nullptr;
-//   inline static std::once_flag m_init_flag{};
-//
-// public:
-//   static Context &instance() {
-//     static Context ctx;
-//     std::call_once(m_init_flag, []() { init(); });
-//     return ctx;
-//   }
-//
-//   static void init() {
-//     m_conn_pool = std::make_unique<ConnectionPool>(config::connection_url,
-//                                                    config::pool_size);
-//   }
-//
-//   ConnectionPool &conn_pool() { return *m_conn_pool; }
-// };
-
 void test_row() {
-  ConnectionPool pool =
-      ConnectionPool(config::connection_url, config::pool_size);
+  ConnectionPool pool = ConnectionPool(config::MainDB::connection_url, 10);
   auto conn = pool.acquire();
 
   auto ddl = Goods::Schema::make_create_table_ddl();

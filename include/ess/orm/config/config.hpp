@@ -16,18 +16,14 @@ inline constexpr bool has_user_config = false;
 
 // 最终配置
 
-using config = ConfigTrait<UserConfig, DefaultConfig>;
+using default_db_config = inner_default::DefaultDB;
 
-using dialect = config::dialect;
-
-static constexpr std::string connection_url = config::connection_url;
-
-static constexpr bool enable_sql_logging = config::enable_sql_logging;
-
-static constexpr std::size_t pool_size = config::pool_size;
-
-static constexpr std::chrono::milliseconds query_timeout =
-    config::query_timeout;
+using Config =
+    GlobalConfigTrait<UserConfig, inner_default::DefaultGlobalConfig>;
+using dialect = Config::dialect;
+using databases = Config::databases;
+using default_db = Config::default_db;
+static constexpr std::size_t database_count = Config::database_count;
 
 static constexpr std::string get_dialect_string() {
   if constexpr (std::is_same_v<dialect, orm::dialect::Sqlite3>) {
@@ -43,14 +39,9 @@ static void print_config() {
   fmt::print(fmt::fg(fmt::color::cyan),
              "\n[Ess ORM Configuration]\n"
              "  {:<18} {}\n"
-             "  {:<18} {}\n"
-             "  {:<18} {}\n"
-             "  {:<18} {}\n"
-             "  {:<18} {}ms\n",
+             "  {:<18} {}\n",
              "User config:", has_user_config ? "detected" : "not detected",
-             "Dialect:", get_dialect_string(),
-             "SQL Logging:", enable_sql_logging ? "true" : "false",
-             "Pool size:", pool_size, "Query timeout:", query_timeout.count());
+             "Dialect:", get_dialect_string());
 }
 
 } // namespace ess::orm::config

@@ -16,7 +16,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   std::unordered_map<std::string, StatementPtr> m_stmt_cache{};
 
   // Connection 的 prepare_cached 由于使用了 shared_from_this，则 Connection
-  // 必须 被 shared_ptr 管理，直接构造会出错，因此考虑禁用构造函数，使用工厂模式
+  // 必须被 shared_ptr 管理，直接构造会出错，因此考虑禁用构造函数，使用工厂模式
   explicit Connection(std::string const &connection_url) {
     sqlite3 *raw_db = nullptr;
     if (sqlite3_open_v2(connection_url.c_str(), &raw_db,

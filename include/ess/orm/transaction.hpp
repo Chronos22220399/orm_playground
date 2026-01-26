@@ -2,10 +2,20 @@
 #include <ess/orm/connection_pool.h>
 #include <ess/orm/context.hpp>
 #include <ess/orm/parser.hpp>
+#include <ess/orm/result.h>
 #include <ess/orm/result_set_mapper.hpp>
 #include <thread>
 
 namespace ess::orm {
+
+struct Read {};
+
+struct Write {};
+
+enum class TxMode { READ, WRITE };
+
+template <typename T>
+concept transaction_mode = std::is_same_v<T, Read> || std::is_same_v<T, Write>;
 
 // 事务上下文
 class TransactionContext {
@@ -13,11 +23,13 @@ class TransactionContext {
   std::thread::id m_thread_id;
   std::type_index m_db_type;
   int m_nesting_level = 0;
+  TxMode m_mode;
 
 public:
-  TransactionContext(std::shared_ptr<Connection> conn, std::type_index db_type)
+  TransactionContext(std::shared_ptr<Connection> conn, std::type_index db_type,
+                     TxMode mode)
       : m_conn(std::move(conn)), m_thread_id(std::this_thread::get_id()),
-        m_db_type(db_type) {}
+        m_db_type(db_type), m_mode(mode) {}
 
   std::shared_ptr<Connection> shared_connection() const { return m_conn; }
 
@@ -31,6 +43,8 @@ public:
   }
 
   int &nesting_level() { return m_nesting_level; }
+
+  TxMode mode() { return m_mode; }
 };
 
 // 全局统一事务上下文管理器
@@ -53,7 +67,7 @@ public:
     return it != m_contexts.end() ? it->second : nullptr;
   }
 
-  TransactionContext *get_default() const { return get<config::DefaultDB>(); }
+  TransactionContext *get_default() const { return get<config::default_db>(); }
 
   bool in_any_transaction() const { return !m_contexts.empty(); }
 };
@@ -84,17 +98,22 @@ public:
 };
 
 // 事务
-template <concepts::database_type DB = config::DefaultDB> class Transaction {
+template <transaction_mode Mode = Write,
+          concepts::database_type DB = config::default_db>
+class Transaction {
   std::shared_ptr<Connection> m_conn;
   int &m_nesting_level;
   int m_my_level;
   bool m_committed = false;
+  std::thread::id m_owner_thread;
 
   class TransactionGuard {
-    Transaction<DB> &m_tx;
+    Transaction<Mode, DB> &m_tx;
 
   public:
-    explicit TransactionGuard(Transaction<DB> &tx) : m_tx(tx) { m_tx.begin(); }
+    explicit TransactionGuard(Transaction<Mode, DB> &tx) : m_tx(tx) {
+      m_tx.begin();
+    }
 
     TransactionGuard(TransactionGuard const &) = delete;
 
@@ -103,16 +122,107 @@ template <concepts::database_type DB = config::DefaultDB> class Transaction {
     ~TransactionGuard() { m_tx.commit(); }
   };
 
+  void verify_thread() const {
+    if (std::this_thread::get_id() != m_owner_thread) {
+      throw std::runtime_error(
+          "Transaction object is being accessed from a different thread. "
+          "SQLite connections are not thread-safe.");
+    }
+  }
+
+private:
+  template <concepts::table_type Table, parser::SqlType sql_type>
+  constexpr auto valide_query() const {
+    static_assert(std::is_same_v<typename Table::Database, DB>,
+                  "Database type missmatched, in query<Table,...>, where "
+                  "Table::Database must equal to transaction<DB>'s DB");
+
+    static_assert(concepts::table_type<Table>,
+                  "请使用持有 Schema 的 Table 类型");
+
+    if constexpr (std::is_same_v<Mode, Read>) {
+      static_assert(sql_type == parser::SqlType::SELECT,
+                    "Read transaction can not use 'DELETE/INSERT/UPDATE'"
+                    "Use Write transaction<DB, Write> instead.");
+    }
+
+    static_assert(sql_type != parser::SqlType::UNKNOWN,
+                  "Unsupported or Invalid SQL statement");
+  }
+
+  struct AsEntity {};
+  struct AsRow {};
+
+  template <typename ResultTag, concepts::table_type Table,
+            meta::FixedString Sql, typename... Args>
+  auto query_impl(Args &&...args) {
+    verify_thread();
+    using namespace parser;
+
+    constexpr auto sql = meta::fs_to_upper(Sql);
+    constexpr auto sql_type = parser::begin_with<sql>(); // 编译时常量
+
+    valide_query<Table, sql_type>();
+
+    Statement &stmt = m_conn->prepare_cached(sql);
+    auto scope = stmt.scope_guard();
+    stmt.bind_params(std::forward<Args>(args)...);
+
+    ResultSetMapper<Table> mapper;
+    mapper.init_mapper(stmt.get());
+
+    if constexpr (sql_type == SqlType::SELECT) {
+      return execute_select<ResultTag, Table>(stmt);
+    } else if constexpr (sql_type == SqlType::INSERT) {
+      stmt.next();
+      return InsertResult{.last_insert_id =
+                              sqlite3_last_insert_rowid(m_conn->handle()),
+                          .affected_rows = sqlite3_changes(m_conn->handle())};
+    } else if constexpr (sql_type == SqlType::UPDATE ||
+                         sql_type == SqlType::DELETE) {
+      stmt.next();
+      return ModifyResult{.affected_rows = sqlite3_changes(m_conn->handle())};
+    }
+  }
+
+  template <typename ResultTag, concepts::table_type Table>
+  auto execute_select(Statement &stmt) {
+    ResultSetMapper<Table> mapper;
+    mapper.init_mapper(stmt.get());
+
+    if constexpr (std::is_same_v<ResultTag, AsEntity>) {
+      std::vector<Table> res{};
+      res.reserve(16);
+      while (stmt.next()) {
+        res.emplace_back();
+        mapper.map_row(stmt.get(), res.back());
+      }
+      return res;
+    } else {
+      std::vector<Row> res{};
+      res.reserve(16);
+      while (stmt.next()) {
+        res.push_back(mapper.map_row(stmt.get()));
+      }
+      return res;
+    }
+  }
+
 public:
   Transaction(std::shared_ptr<Connection> guard, int &nesting_level)
       : m_conn(std::move(guard)), m_nesting_level(nesting_level),
-        m_my_level(nesting_level) {}
+        m_my_level(nesting_level), m_owner_thread(std::this_thread::get_id()) {}
 
   ~Transaction() {}
 
   void begin() {
+    verify_thread();
     if (m_my_level == 0) {
-      m_conn->execute_raw("BEGIN IMMEDIATE");
+      if constexpr (std::is_same_v<Mode, Write>) {
+        m_conn->execute_raw("BEGIN IMMEDIATE");
+      } else {
+        m_conn->execute_raw("BEGIN DEFERRED");
+      }
     } else {
       m_conn->execute_raw(fmt::format("SAVEPOINT sp_{}", m_my_level));
     }
@@ -120,6 +230,7 @@ public:
   }
 
   void commit() {
+    verify_thread();
     --m_nesting_level;
     if (m_my_level == 0) {
       m_conn->execute_raw("COMMIT");
@@ -130,6 +241,7 @@ public:
   }
 
   void rollback() {
+    verify_thread();
     if (m_committed)
       return;
     --m_nesting_level;
@@ -143,66 +255,35 @@ public:
 
   Connection &connection() { return *m_conn; }
 
-  std::shared_ptr<Connection> shared_connection() { return std::move(m_conn); }
+  std::shared_ptr<Connection> shared_connection() { return m_conn; }
 
   [[nodiscard]] TransactionGuard scope_guard() {
     return TransactionGuard{*this};
   }
 
+  template <meta::FixedString Sql> auto exec() {
+    verify_thread();
+    Statement &stmt = m_conn->execute_raw(Sql);
+  }
+
   template <concepts::table_type Table, meta::FixedString Sql, typename... Args>
   auto query(Args &&...args) {
-    using namespace parser;
+    return query_impl<AsEntity, Table, Sql>(std::forward<Args>(args)...);
+  }
 
-    constexpr auto sql = meta::fs_to_upper(Sql);
-
-    Statement &stmt = m_conn->prepare_cached(sql);
-    auto scope = stmt.scope_guard();
-    stmt.bind_params(std::forward<Args>(args)...);
-
-    ResultSetMapper<Table> mapper;
-    mapper.init_mapper(stmt.get());
-
-    constexpr auto sql_type = parser::begin_with<sql>(); // 编译时常量
-
-    if constexpr (sql_type == SqlType::SELECT) {
-      std::vector<Table> res{};
-      res.reserve(16);
-
-      while (stmt.next()) {
-        res.emplace_back();
-        mapper.map_row(stmt.get(), res.back());
-      }
-
-      return res;
-
-    } else if constexpr (sql_type == SqlType::INSERT) {
-      stmt.next();
-      return sqlite3_last_insert_rowid(m_conn->handle());
-
-    } else if constexpr (sql_type == SqlType::UPDATE ||
-                         sql_type == SqlType::DELETE) {
-      stmt.next();
-      return sqlite3_changes(m_conn->handle());
-
-    } else {
-      // 编译时错误，而不是运行时抛异常
-      static_assert(sql_type != SqlType::UNKNOWN,
-                    "Unsupported or Invalid SQL statement");
-    }
+  template <concepts::table_type Table, meta::FixedString Sql, typename... Args>
+  auto query_rows(Args &&...args) {
+    return query_impl<AsRow, Table, Sql>(std::forward<Args>(args)...);
   }
 };
 
-template <typename Func, typename DB>
-concept explicit_tx_func = std::invocable<Func, Transaction<DB> &>;
-
-template <typename Func>
-concept implicit_tx_func =
-    std::invocable<Func> &&
-    (!std::invocable<Func, Transaction<config::DefaultDB> &>);
+template <typename Func, typename Mode, typename DB>
+concept explicit_tx_func = std::invocable<Func, Transaction<Mode, DB> &>;
 
 // 显式模式
-template <concepts::database_type DB = config::DefaultDB, typename Func>
-  requires explicit_tx_func<Func, DB>
+template <transaction_mode Mode = Write,
+          concepts::database_type DB = config::default_db, typename Func>
+  requires explicit_tx_func<Func, Mode, DB>
 auto transaction(Func &&func) {
   // 检查是否有当前数据库连接的上下文
   TransactionContext *current_ctx =
@@ -210,25 +291,32 @@ auto transaction(Func &&func) {
   // 判断是否为跟事务
   const bool is_root = (current_ctx == nullptr);
 
+  constexpr bool is_read = std::is_same_v<Mode, Read>;
+  if (!is_root) {
+    if constexpr (is_read) {
+      if (current_ctx->mode() == TxMode::WRITE) {
+        throw std::runtime_error(
+            "Can't nest read transaction inside write transaction, Use write "
+            "transaction or move read outside.\n");
+      }
+    }
+  }
+
   std::unique_ptr<TransactionContext> ctx_owner;
-  std::optional<ConnectionPool::ConnectionGuard> conn_guard;
-  std::shared_ptr<Connection> conn_ptr = nullptr;
+  std::shared_ptr<Connection> conn_ptr;
 
   if (is_root) {
-    conn_guard = Context::instance().conn_pool<DB>().acquire();
-    if (!conn_guard.has_value()) {
-      throw std::runtime_error(
-          fmt::format("Can't acquire a connection from pool, the "
-                      "relevant database path is: {}\n",
-                      DB::connection_url));
-    }
-    conn_ptr = conn_guard.value().shared();
+    conn_ptr = Context::instance().conn_pool<DB>().acquire();
     ctx_owner = std::make_unique<TransactionContext>(
-        conn_ptr, std::type_index(typeid(DB)));
+        conn_ptr, std::type_index(typeid(DB)),
+        (is_read ? TxMode::READ : TxMode::WRITE));
     current_ctx = ctx_owner.get();
   } else {
     conn_ptr = current_ctx->shared_connection();
   }
+
+  // 检查是否跨线程
+  current_ctx->verify_thread();
 
   // 上下文管理恢复用
   std::optional<ContextGuard<DB>> ctx_guard;
@@ -236,11 +324,12 @@ auto transaction(Func &&func) {
     ctx_guard.emplace(current_ctx);
   }
 
-  Transaction<DB> tx = Transaction<DB>(conn_ptr, current_ctx->nesting_level());
+  Transaction<Mode, DB> tx =
+      Transaction<Mode, DB>(conn_ptr, current_ctx->nesting_level());
 
   tx.begin();
   try {
-    using ret_type = std::invoke_result_t<Func, Transaction<DB> &>;
+    using ret_type = std::invoke_result_t<Func, Transaction<Mode, DB> &>;
     if constexpr (std::is_void_v<ret_type>) {
       std::invoke(std::forward<Func>(func), tx);
       tx.commit();
@@ -255,15 +344,5 @@ auto transaction(Func &&func) {
     throw;
   }
 }
-
-// 隐式模式
-// 1. 获取当前上下文
-// 2. 上下文为空则创建并注册上下文，否则直接使用上下文的内容
-// 3. 将上下文的内容交给guard保存（RAII）
-// 4. 通过上下文
-
-// TODO: 2026/1/26 todo
-// template <concepts::table_type Table, meta::FixedString Sql, typename...
-// Args> auto query() {}
 
 } // namespace ess::orm

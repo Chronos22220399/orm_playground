@@ -68,6 +68,9 @@ concept database_type = requires {
 };
 
 template <typename Table>
-concept table_type = requires { typename Table::Schema; };
+concept table_type = requires {
+  typename Table::Database;
+  typename Table::Schema;
+};
 
 } // namespace ess::orm::concepts
