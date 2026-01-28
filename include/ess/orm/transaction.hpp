@@ -159,7 +159,8 @@ private:
     verify_thread();
     using namespace parser;
 
-    constexpr auto sql = meta::fs_to_upper(Sql);
+    // constexpr auto sql = meta::fs_to_upper(Sql);
+    constexpr auto sql = Sql;
     constexpr auto sql_type = parser::begin_with<sql>(); // 编译时常量
 
     valide_query<Table, sql_type>();
@@ -274,6 +275,35 @@ public:
   template <concepts::table_type Table, meta::FixedString Sql, typename... Args>
   auto query_rows(Args &&...args) {
     return query_impl<AsRow, Table, Sql>(std::forward<Args>(args)...);
+  }
+
+  // TODO: 待改进
+  template <concepts::table_type Table, meta::FixedString Sql, typename R,
+            typename... Args>
+  auto query_scaler(return_type<R>, Args &&...args) {
+
+    verify_thread();
+    using namespace parser;
+
+    // constexpr auto sql = meta::fs_to_upper(Sql);
+    constexpr auto sql = Sql;
+    constexpr auto sql_type = parser::begin_with<sql>(); // 编译时常量
+
+    static_assert(sql_type == parser::SqlType::SELECT,
+                  "query_scaler only support select.");
+
+    std::shared_ptr<Connection> conn =
+        Context::instance().conn_pool<DB>().acquire();
+
+    Statement &stmt = conn->prepare_cached(sql);
+    auto scope = stmt.scope_guard();
+    stmt.bind_params(std::forward<Args>(args)...);
+
+    if (stmt.next()) {
+      return get_column<R>(stmt.get(), 0);
+    }
+    // 没有结果则返回默认值或者抛出异常
+    return R{};
   }
 };
 

@@ -64,8 +64,8 @@ public:
     }(std::make_index_sequence<count>{});
 
     // TODO: debug 模式下使用
-    auto expanded = expanded_sql();
-    fmt::println("SQL: {}", expanded);
+    // auto expanded = expanded_sql();
+    // fmt::println("SQL: {}", expanded);
   }
 
   std::string expanded_sql() {
@@ -98,21 +98,30 @@ public:
   [[nodiscard]] StatementGuard scope_guard() { return StatementGuard{*this}; }
 
 private:
-  void bind_one(int index, int param) {
-    sqlite3_bind_int(m_stmt.get(), index, param);
+  template <std::integral T> void bind_one(int index, T param) {
+    if constexpr (std::is_same_v<T, bool>) {
+      sqlite3_bind_int(m_stmt.get(), index, param ? 1 : 0);
+    } else {
+      sqlite3_bind_int64(m_stmt.get(), index,
+                         static_cast<sqlite3_int64>(param));
+    }
   }
 
   void bind_one(int index, double param) {
     sqlite3_bind_double(m_stmt.get(), index, param);
   }
 
+  void bind_one(int index, std::string_view param) {
+    sqlite3_bind_text(m_stmt.get(), index, param.data(),
+                      static_cast<int>(param.length()), SQLITE_TRANSIENT);
+  }
+
   void bind_one(int index, std::string const &param) {
     sqlite3_bind_text(m_stmt.get(), index, param.c_str(), -1, SQLITE_TRANSIENT);
   }
 
-  void bind_one(int index, std::string_view param) {
-    sqlite3_bind_text(m_stmt.get(), index, param.data(),
-                      static_cast<int>(param.length()), SQLITE_TRANSIENT);
+  void bind_one(int index, const char *param) {
+    sqlite3_bind_text(m_stmt.get(), index, param, -1, SQLITE_TRANSIENT);
   }
 
   void bind_one(int index) { sqlite3_bind_null(m_stmt.get(), index); }

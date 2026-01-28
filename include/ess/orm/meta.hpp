@@ -1,49 +1,48 @@
 #pragma once
 #include <cassert>
-#include <optional>
 #include <string_view>
 #include <vector>
 
 namespace ess::orm::meta {
 template <std::size_t N> struct FixedString {
-  char m_str[N];
+  char value[N];
 
   constexpr FixedString(const char (&str)[N]) {
     for (int i = 0; i < N; ++i)
-      m_str[i] = str[i];
+      value[i] = str[i];
   }
 
   constexpr FixedString(const FixedString<N> &s) {
     for (int i = 0; i < N; ++i)
-      m_str[i] = s[i];
+      value[i] = s[i];
   }
 
   constexpr FixedString() {
     for (int i = 0; i < N; ++i)
-      m_str[i] = '\0';
+      value[i] = '\0';
   };
 
   constexpr char &operator[](size_t idx) {
     assert(idx < N && "index out of range");
-    return m_str[idx];
+    return value[idx];
   }
 
   constexpr char operator[](size_t idx) const {
     assert(idx < N && "index out of range");
-    return m_str[idx];
+    return value[idx];
   }
 
   template <std::size_t Idx> constexpr const char &get() const {
     static_assert(Idx < N, "index out of range");
-    return m_str[Idx];
+    return value[Idx];
   }
 
-  constexpr std::size_t size() const { return std::size(m_str); }
+  constexpr std::size_t size() const { return std::size(value); }
 
-  constexpr const char *data() const { return m_str; }
+  constexpr const char *data() const { return value; }
 
   constexpr operator std::string_view() const {
-    return std::string_view{m_str, N - 1};
+    return std::string_view{value, N - 1};
   }
 };
 
@@ -79,7 +78,7 @@ constexpr bool fs_equal(FixedString<N1> lhs, FixedString<N2> rhs) {
   if constexpr (N2 != N1)
     return false;
   for (int i = 0; i < N1 - 1; ++i)
-    if (lhs.m_str[i] != rhs.m_str[i])
+    if (lhs.value[i] != rhs.value[i])
       return false;
   return true;
 }
@@ -131,13 +130,13 @@ constexpr FixedString<Len + 1> fs_substr(FixedString<N> str) {
 template <std::size_t N>
 constexpr std::string_view fs_substr_view(FixedString<N> str, std::size_t pos,
                                           std::size_t len) {
-  return std::string_view{str.data() + pos, len};
+  return std::string_view{str.value() + pos, len};
 }
 
 // 串视图
 template <std::size_t N>
 constexpr std::string_view fs_string_view(FixedString<N> str) {
-  return std::string_view{str.data()};
+  return std::string_view{str.value()};
 }
 
 // 判断是否以prefix为前缀

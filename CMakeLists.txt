@@ -73,20 +73,28 @@ target_link_libraries(
 target_compile_options(
   ${exname}
   PRIVATE
-  -O0
+  -O3
   -g 
   -fno-omit-frame-pointer
-  -fsanitize=address
-  -fexceptions
-  -save-temps=obj
+  # -fsanitize=address
+  # -fexceptions
+  # -save-temps=obj
   # -Rpass=inline
 )
 
 target_link_options(
   ${exname}
   PRIVATE
-  -fsanitize=address
+  # -fsanitize=address
 )
+
+# 在你现有的 CMakeLists.txt 末尾添加
+
+option(BUILD_BENCHMARKS "Build benchmarks" OFF)
+
+if(BUILD_BENCHMARKS)
+    add_subdirectory(bench)
+endif()
 
 # target_precompile_headers(
 #   ${exname}

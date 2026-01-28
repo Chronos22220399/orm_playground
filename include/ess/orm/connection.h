@@ -17,9 +17,9 @@ class Connection : public std::enable_shared_from_this<Connection> {
 
   // Connection 的 prepare_cached 由于使用了 shared_from_this，则 Connection
   // 必须被 shared_ptr 管理，直接构造会出错，因此考虑禁用构造函数，使用工厂模式
-  explicit Connection(std::string const &connection_url) {
+  explicit Connection(std::string_view connection_url) {
     sqlite3 *raw_db = nullptr;
-    if (sqlite3_open_v2(connection_url.c_str(), &raw_db,
+    if (sqlite3_open_v2(connection_url.data(), &raw_db,
                         SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX,
                         nullptr) != SQLITE_OK) {
       throw std::runtime_error(std::string("Can't open the database: ") +
@@ -32,16 +32,16 @@ class Connection : public std::enable_shared_from_this<Connection> {
   // TODO: 后续将 configure 拆开，由配置结果来选择开启的模式
   void configure() {
     execute_raw("PRAGMA journal_mode=WAL;");   // WAL 模式
-    execute_raw("PRAGMA busy_timeout=30000;"); // 等待 30 秒
     execute_raw("PRAGMA synchronous=NORMAL;"); // 平衡性能和安全
     execute_raw("PRAGMA cache_size=-64000;");  // 缓存大小 64MB
     execute_raw("PRAGMA temp_store=MEMORY;");  // 临时表存储在内存
+    execute_raw("PRAGMA busy_timeout=30000;"); // 等待 30 秒
   }
 
 public:
   static std::shared_ptr<Connection> create(std::string const &connection_url) {
     struct Enabler : Connection {
-      Enabler(std::string const &url) : Connection(url) {}
+      Enabler(std::string_view url) : Connection(url) {}
     };
     return std::make_shared<Enabler>(connection_url);
   }

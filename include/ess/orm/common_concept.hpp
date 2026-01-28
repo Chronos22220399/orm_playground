@@ -64,7 +64,7 @@ concept sql_default_value = detail::sql_value_impl<T>::value;
 
 template <typename T>
 concept database_type = requires {
-  { T::connection_url } -> std::convertible_to<std::string>;
+  { T::connection_url } -> std::convertible_to<std::string_view>;
 };
 
 template <typename Table>

@@ -3,11 +3,16 @@
 #include <ess/orm/meta.hpp>
 
 struct MainDB {
-  static constexpr std::string connection_url = "./data/test.db";
+  static constexpr std::string_view connection_url = "./data/test.db";
 };
 
 struct LoggerDB {
-  static constexpr std::string connection_url = "./data/test1.db";
+  static constexpr std::string_view connection_url = "./data/test1.db";
+};
+
+struct TestDB {
+  static constexpr std::string_view connection_url = "./bench/data/test_orm.db";
+  static constexpr std::size_t pool_size = 3;
 };
 
 struct UserConfig {
@@ -15,7 +20,8 @@ struct UserConfig {
 
   using databases = std::tuple< //
       MainDB,                   //
-      LoggerDB                  //
+      LoggerDB,                 //
+      TestDB                    //
       >;
 
   using default_db = MainDB;

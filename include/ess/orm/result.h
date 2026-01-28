@@ -9,3 +9,7 @@ struct InsertResult {
 struct ModifyResult {
   int affected_rows;
 };
+
+template <typename R> struct return_type {
+  using type = R;
+};

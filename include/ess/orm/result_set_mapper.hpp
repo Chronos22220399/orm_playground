@@ -22,6 +22,7 @@ inline std::string get_column_name(sqlite3_stmt *stmt, int index) {
   return reinterpret_cast<const char *>(sqlite3_column_name(stmt, index));
 }
 
+// TODO: 优化映射表的建立或是采用更高效的方式
 template <concepts::table_type Table> struct SchemaMapper {
 private:
   using schema = Table::Schema;

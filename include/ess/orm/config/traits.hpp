@@ -10,12 +10,12 @@ namespace detail {
 // ============== database 配置萃取 ==================
 template <typename T>
 concept has_connection_url = requires {
-  { T::connection_url } -> std::convertible_to<std::string>;
+  { T::connection_url } -> std::convertible_to<std::string_view>;
 };
 
 template <typename T>
 concept has_password = requires {
-  { T::password } -> std::convertible_to<std::string>;
+  { T::password } -> std::convertible_to<std::string_view>;
 };
 
 template <typename T>
@@ -49,7 +49,7 @@ template <concepts::database_type UserDB, typename DefaultDatabase>
 struct DatabaseTrait {
 
   // connection_url
-  static constexpr std::string connection_url = UserDB::connection_url;
+  static constexpr std::string_view connection_url = UserDB::connection_url;
 
   // password
   static constexpr std::string password = []() {

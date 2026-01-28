@@ -5,6 +5,7 @@
 #include <ess/orm/parser.hpp>
 #include <ess/orm/result_set_mapper.hpp>
 #include <ess/orm/runtime.hpp>
+#include <ess/orm/sql/lexer.hpp>
 #include <ess/orm/statement.h>
 #include <ess/orm/transaction.hpp>
 #include <thread>
@@ -50,22 +51,36 @@ struct Log {
   using Schema = Schema<"log", Field<"id", &Log::id>>;
 };
 
+constexpr sql::Token ensure_no_error(sql::Token tok) {
+  if (tok.type == sql::TokenType::UNKNOWN) {
+    // 在编译期，这会导致编译器打印出具体的错误描述
+    throw "SQL Lexer Error: Invalid character or unterminated literal!";
+  }
+  return tok;
+}
+
 int main() {
   using namespace ess::orm::config;
 
-  auto res = ess::orm::query<Goods, "SELECT * FROM goods">();
+  constexpr auto Sql = "1ello"_fs;
+  constexpr sql::Lexer lexer(Sql);
 
-  transaction<Read>([](auto &txs) {
-    transaction<Read>([](auto &tx) {
-      std::vector<Row> res =
-          tx.template query_rows<Goods, "SELECT * FROM goods ">();
-      for (auto &g : res) {
-        std::cout << g["id"].as<int>() << std::endl;
-      }
-    });
-    transaction<Write, LoggerDB>(
-        [](auto &tx) { tx.template query<Log, "SELECT * FROM log">(); });
-  });
+  // static_assert(ensure_no_error(sql::Lexer("1."_fs).next_token()) ==
+  //               sql::TokenType::NUMBER);
+
+  // auto res = ess::orm::query<Goods, Sql>();
+
+  // transaction<Read>([](auto &txs) {
+  //   transaction<Read>([](auto &tx) {
+  //     std::vector<Row> res =
+  //         tx.template query_rows<Goods, "SELECT * FROM goods ">();
+  //     for (auto &g : res) {
+  //       std::cout << g["id"].as<int>() << std::endl;
+  //     }
+  //   });
+  //   transaction<Write, LoggerDB>(
+  //       [](auto &tx) { tx.template query<Log, "SELECT * FROM log">(); });
+  // });
   return 0;
 }
 
