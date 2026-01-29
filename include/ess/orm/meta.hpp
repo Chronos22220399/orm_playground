@@ -126,13 +126,6 @@ constexpr FixedString<Len + 1> fs_substr(FixedString<N> str) {
   return result;
 }
 
-// 子串视图
-template <std::size_t N>
-constexpr std::string_view fs_substr_view(FixedString<N> str, std::size_t pos,
-                                          std::size_t len) {
-  return std::string_view{str.value() + pos, len};
-}
-
 // 串视图
 template <std::size_t N>
 constexpr std::string_view fs_string_view(FixedString<N> str) {

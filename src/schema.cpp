@@ -23,6 +23,7 @@ void test_row();
 void test_multithread();
 void init_database();
 void test_row_asan_safety();
+void test_lexer_tokenize();
 
 struct Goods {
   long long id = 0;
@@ -59,14 +60,21 @@ constexpr sql::Token ensure_no_error(sql::Token tok) {
   return tok;
 }
 
+template <meta::FixedString Sql> constexpr auto test_lexer_string() {
+  auto lexer = sql::Lexer(Sql);
+  auto t1 = lexer.next_token();
+  auto t2 = lexer.next_token();
+  auto t3 = lexer.next_token();
+  return std::array{t1.type, t2.type, t3.type};
+}
+
 int main() {
   using namespace ess::orm::config;
 
-  constexpr auto Sql = "1ello"_fs;
-  constexpr sql::Lexer lexer(Sql);
-
-  // static_assert(ensure_no_error(sql::Lexer("1."_fs).next_token()) ==
-  //               sql::TokenType::NUMBER);
+  constexpr sql::LexResult result =
+      sql::Lexer(", . * ( ) + - / ? = < <= <> > >= != hello SELECT INSERT"_fs)
+          .tokenize<128>();
+  static_assert(!result.has_error);
 
   // auto res = ess::orm::query<Goods, Sql>();
 
@@ -241,4 +249,138 @@ void test_row_asan_safety() {
 
   std::cerr << " - 场景 3 完成\n";
   std::cerr.flush();
+}
+
+void test_lexer_tokenize() {
+  using namespace sql;
+  // =========================================
+  // 测试1：正常的所有 Token 混合
+  // =========================================
+  constexpr auto input1 =
+      ", . * ( ) + - / ? = < <= <> > >= != hello SELECT INSERT FROM"_fs;
+  constexpr LexResult result1 = Lexer(input1).tokenize<128>();
+  // 检查没有错误
+  static_assert(!result1.has_error, "Mixed tokens should have no error");
+  // 检查 Token 数量
+  // , . * ( ) + - / ? = < <= <> > >= != -> 18个
+  // hello SELECT INSERT FROM -> 4个
+  // END -> 1个
+  // 总计: 18 + 4 + 1 = 23个
+  static_assert(result1.count == 21, "Mixed tokens should produce 23 tokens");
+  // 逐个检查 Token 类型
+  // 第一行是特殊符号
+  static_assert(result1[0].type == TokenType::COMMA);
+  static_assert(result1[1].type == TokenType::DOT);
+  static_assert(result1[2].type == TokenType::STAR);
+  static_assert(result1[3].type == TokenType::LPAREN);
+  static_assert(result1[4].type == TokenType::RPAREN);
+  static_assert(result1[5].type == TokenType::PLUS);
+  static_assert(result1[6].type == TokenType::MINUS);
+  static_assert(result1[7].type == TokenType::SLASH);
+  static_assert(result1[8].type == TokenType::PLACEHOLDER);
+  static_assert(result1[9].type == TokenType::EQ);
+  static_assert(result1[10].type == TokenType::LT);
+  static_assert(result1[11].type == TokenType::LE);
+  static_assert(result1[12].type == TokenType::NE);
+  static_assert(result1[13].type == TokenType::GT);
+  static_assert(result1[14].type == TokenType::GE);
+  static_assert(result1[15].type == TokenType::NE); // `!=` 也被识别为 NE
+  static_assert(result1[16].type == TokenType::IDENTIFIER); // hello
+  static_assert(result1[17].type == TokenType::SELECT);
+  static_assert(result1[18].type == TokenType::INSERT);
+  static_assert(result1[19].type == TokenType::FROM);
+  // 检查结尾是 END
+  static_assert(result1[20].type == TokenType::END);
+  // 超出数量的访问也应该是 END
+  static_assert(result1[21].type == TokenType::END);
+  // =========================================
+  // 测试2：空输入
+  // =========================================
+  constexpr auto input2 = ""_fs;
+  constexpr LexResult result2 = Lexer(input2).tokenize<128>();
+  static_assert(!result2.has_error, "Empty input should have no error");
+  static_assert(result2.count == 1,
+                "Empty input should produce only END token");
+  static_assert(result2[0].type == TokenType::END, "First token should be END");
+  // =========================================
+  // 测试3：只包含空白字符
+  // =========================================
+  constexpr auto input3 = " \t\n\r "_fs;
+  constexpr LexResult result3 = Lexer(input3).tokenize<128>();
+  static_assert(!result3.has_error,
+                "Whitespace-only input should have no error");
+  static_assert(result3.count == 1,
+                "Whitespace should be ignored, only END token");
+  static_assert(result3[0].type == TokenType::END);
+  // =========================================
+  // 测试4：空字符串
+  // =========================================
+  constexpr auto input4 = "''"_fs;
+  constexpr LexResult result4 = Lexer(input4).tokenize<128>();
+  static_assert(!result4.has_error, "Empty string should be valid");
+  static_assert(result4.count == 2, "Empty string should be STRING + END");
+  static_assert(result4[0].type == TokenType::STRING,
+                "First token should be STRING");
+  static_assert(result4[1].type == TokenType::END,
+                "Second token should be END");
+  // =========================================
+  // 测试5：包含转义符的字符串
+  // =========================================
+  constexpr auto input5 = "'It''s a book'"_fs;
+  constexpr LexResult result5 = Lexer(input5).tokenize<128>();
+  static_assert(!result5.has_error,
+                "String with escaped quote should be valid");
+  static_assert(result5.count == 2, "Escaped string should be STRING + END");
+  static_assert(result5[0].type == TokenType::STRING,
+                "First token should be STRING");
+  static_assert(result5[1].type == TokenType::END,
+                "Second token should be END");
+  // =========================================
+  // 测试6：未闭合的字符串（触发错误）
+  // =========================================
+  constexpr auto input6 = "'hello"_fs;
+  constexpr LexResult result6 = Lexer(input6).tokenize<128>();
+  static_assert(result6.has_error, "Unterminated string should have an error");
+  static_assert(result6.count == 1, "Should produce one UNKNOWN token");
+  static_assert(result6[0].type == TokenType::UNKNOWN,
+                "First token should be UNKNOWN");
+  static_assert(result6.err_len == 6, "Error message has set");
+  // =========================================
+  // 测试7：输入字符串后跟非法字符 (你的老问题)
+  // =========================================
+  // 根据你之前的讨论，"''hello'" 应该被解析为 [STRING '', IDENTIFIER hello,
+  // UNKNOWN ']
+  constexpr auto input7 = "''hello'"_fs;
+  constexpr LexResult result7 = Lexer(input7).tokenize<128>();
+  static_assert(result7.has_error, "Input like ''hello' should have an error");
+  static_assert(result7.count == 3, "Should produce 3 tokens");
+  static_assert(result7[0].type == TokenType::STRING,
+                "First token should be STRING");
+  static_assert(result7[1].type == TokenType::IDENTIFIER,
+                "Second token should be IDENTIFIER");
+  static_assert(result7[2].type == TokenType::UNKNOWN,
+                "Third token should be UNKNOWN");
+  static_assert(result7.err_len == 1, "Error message has set");
+  // =========================================
+  // 测试8：数字与非法的尾随点
+  // =========================================
+  constexpr auto input8 = "1."_fs;
+  constexpr LexResult result8 = Lexer(input8).tokenize<128>();
+  static_assert(result8.has_error,
+                "Number with a trailing dot (like '1.') should be invalid");
+  static_assert(result8.count == 1, "Should be NUMBER + END");
+  static_assert(result8[0].type == TokenType::UNKNOWN,
+                "First token should be NUMBER");
+  static_assert(result8[1].type == TokenType::END,
+                "Second token should be END");
+  // =========================================
+  // 测试9：两个点 (Illegal)
+  // =========================================
+  constexpr auto input9 = ".."_fs;
+  constexpr LexResult result9 = Lexer(input9).tokenize<128>();
+  static_assert(result9.has_error, "'..' should be an error");
+  static_assert(result9.count == 1, "Should produce one UNKNOWN token");
+  static_assert(result9[0].type == TokenType::UNKNOWN,
+                "First token should be UNKNOWN");
+  static_assert(result9.err_len == 2, "Error message should be set");
 }
