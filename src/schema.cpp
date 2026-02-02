@@ -8,6 +8,8 @@
 #include <ess/orm/sql/lexer.hpp>
 #include <ess/orm/statement.h>
 #include <ess/orm/transaction.hpp>
+#include <print>
+#include <ranges>
 #include <thread>
 // #include <ess/orm/test/stress_test.hpp>
 #include <sqlite3.h>
@@ -68,27 +70,98 @@ template <meta::FixedString Sql> constexpr auto test_lexer_string() {
   return std::array{t1.type, t2.type, t3.type};
 }
 
+template <std::size_t Col> inline constexpr auto make_arrow(const char *src) {
+  meta::FixedString<Col + 1> res{};
+  for (std::size_t i = 0; i < Col; ++i) {
+    res[i] = (src[i] == '\t') ? '\t' : ' ';
+  }
+  res[Col] = '^';
+  return res;
+}
+
+constexpr std::string_view get_context_snippet(std::string_view s,
+                                               std::size_t err_pos,
+                                               std::size_t context_len = 40) {
+  std::size_t start =
+      (err_pos > context_len / 2) ? (err_pos - context_len / 2) : 0;
+
+  std::size_t end =
+      (start + context_len < s.size()) ? (start + context_len) : s.size();
+  return s.substr(start, end - start);
+}
+
 int main() {
   using namespace ess::orm::config;
 
-  constexpr sql::LexResult result =
-      sql::Lexer(", . * ( ) + - / ? = < <= <> > >= != hello SELECT INSERT"_fs)
-          .tokenize<128>();
-  static_assert(!result.has_error);
+  // std::vector<int> vec = {1, 3, 4, 5};
+  //
+  // auto result = vec;
+  // for (auto &r : result) {
+  //   std::cout << r << std::endl;
+  // }
 
-  // auto res = ess::orm::query<Goods, Sql>();
+  // constexpr auto sql =
+  //     ", . * ( ) + - / ? = < <= <> > >= != ! hello SELECT INSERT hello?'"_fs;
 
-  // transaction<Read>([](auto &txs) {
-  //   transaction<Read>([](auto &tx) {
-  //     std::vector<Row> res =
-  //         tx.template query_rows<Goods, "SELECT * FROM goods ">();
-  //     for (auto &g : res) {
-  //       std::cout << g["id"].as<int>() << std::endl;
-  //     }
-  //   });
-  //   transaction<Write, LoggerDB>(
-  //       [](auto &tx) { tx.template query<Log, "SELECT * FROM log">(); });
-  // });
+  constexpr auto sql = "SELECT INSERT !"_fs;
+  constexpr auto result = sql::Lexer(sql).tokenize<128>();
+  // 运行时版本（更简单可靠）
+  if constexpr (result.has_error) {
+    constexpr std::size_t col = result.err_col;
+    constexpr std::size_t pos = result.err_pos;
+    constexpr std::size_t len = result.err_len;
+
+    // 计算上下文范围
+    constexpr std::size_t context_len = 50;
+    constexpr std::size_t start =
+        (pos > context_len / 2) ? (pos - context_len / 2) : 0;
+    constexpr std::size_t end =
+        ((start + context_len < sql.size()) ? (start + context_len)
+                                            : sql.size()) -
+        1;
+
+    // 箭头位置 = 错误列 - 片段起始位置
+    constexpr std::size_t arrow_pos = pos - start;
+
+    fmt::println("[Ess-Orm] Error: {}", result.err_msg);
+    fmt::println("Line {}, Column {}", result.err_line, col);
+    fmt::println("  {}", meta::fs_substr<start, end - start>(sql));
+    fmt::println("  {: >{}}^", "", arrow_pos);
+    fmt::println("  Token: '{}'", fs_substr<pos, len>(sql));
+  }
+
+  auto conn = Context::instance().conn_pool().acquire();
+  int level = 0;
+  auto tx = Transaction(std::move(conn), level);
+  try {
+    tx.begin();
+    for (auto &g :
+         tx.query<Goods, "SELECT * FROM goods WHERE title = 'hello?'">()) {
+      std::cout << g.title << std::endl;
+    };
+    tx.commit();
+  } catch (...) {
+    // logger.push
+    tx.rollback();
+  }
+
+  // auto res = ess::orm::query<Goods, "SELECT * FROM goods">();
+
+  transaction<Write>([](auto &txs) {
+    transaction<Read, LoggerDB>([](auto &tx) {
+      auto res = tx.template query<Log, "SELECT * FROM log">();
+      for (auto &l : res) {
+        std::cout << l.id << std::endl;
+      }
+    });
+
+    transaction<Write>([](auto &tx) {
+      auto res = tx.template query_rows<Goods, "SELECT * FROM goods">();
+      for (auto &g : res) {
+        std::cout << g["id"].template as<int>() << std::endl;
+      }
+    });
+  });
   return 0;
 }
 

@@ -13,6 +13,8 @@ try:
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
     HAS_MATPLOTLIB = True
+    plt.rcParams['font.sans-serif'] = ['Noto Sans SC', 'Heiti TC', 'Arial Unicode MS']
+    plt.rcParams['axes.unicode_minus'] = False
 except ImportError:
     HAS_MATPLOTLIB = False
     print("提示: 安装 matplotlib 可以生成图表")

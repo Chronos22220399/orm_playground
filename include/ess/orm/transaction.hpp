@@ -142,7 +142,7 @@ private:
 
     if constexpr (std::is_same_v<Mode, Read>) {
       static_assert(sql_type == parser::SqlType::SELECT,
-                    "Read transaction can not use 'DELETE/INSERT/UPDATE'"
+                    "Read transaction can not use 'DELETE/INSERT/UPDATE'. "
                     "Use Write transaction<DB, Write> instead.");
     }
 
@@ -210,8 +210,8 @@ private:
   }
 
 public:
-  Transaction(std::shared_ptr<Connection> guard, int &nesting_level)
-      : m_conn(std::move(guard)), m_nesting_level(nesting_level),
+  Transaction(std::shared_ptr<Connection> conn, int &nesting_level)
+      : m_conn(std::move(conn)), m_nesting_level(nesting_level),
         m_my_level(nesting_level), m_owner_thread(std::this_thread::get_id()) {}
 
   ~Transaction() {}
@@ -371,6 +371,8 @@ auto transaction(Func &&func) {
     }
   } catch (...) {
     tx.rollback();
+    // TODO: 后续可通过在错误中添加对数据库类型的比较实现彻底的数据库事务隔离
+    // 当前的实现下，嵌套的数据库A的事务rollback后，抛出的错误会直接影响到外层的事务，会让外层随之rollback，后续可按照todo的更改
     throw;
   }
 }

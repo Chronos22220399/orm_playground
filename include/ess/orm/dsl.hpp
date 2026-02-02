@@ -17,10 +17,11 @@ private:
   using member_traits = ess::orm::traits::MemberPointerTraits<Ptr>;
 
 public:
-  static constexpr meta::FixedString column_name = ColumnName;
   using pointer_type = typename member_traits::pointer_type;
-  static constexpr decltype(auto) pointer = member_traits::pointer;
   using member_type = member_traits::member_type;
+
+  static constexpr meta::FixedString column_name = ColumnName;
+  static constexpr decltype(auto) pointer = member_traits::pointer;
   using attributes = std::tuple<Attrs...>;
 
 private:
@@ -92,6 +93,7 @@ struct Schema {
   using fields = std::tuple<Fields...>;
 
 private:
+  // TODO: 将 make_create_table_ddl 拆分出来，让 Schema 仅作为元数据载体
   template <typename Field>
   [[gnu::noinline]] static std::string make_col_def() {
     using member_semantic_type =

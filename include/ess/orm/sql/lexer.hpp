@@ -14,6 +14,8 @@ template <std::size_t N> struct LexResult {
   bool has_error = false;
   std::size_t err_pos = 0;
   std::size_t err_len = 0;
+  std::size_t err_line = 0;
+  std::size_t err_col = 0;
   std::string_view err_msg{};
 
   constexpr Token operator[](std::size_t idx) const {
@@ -44,6 +46,8 @@ public:
         result.err_pos = token.pos;
         result.err_len = token.length;
         result.err_msg = err_msg;
+        result.err_line = m_line;
+        result.err_col = m_col;
         break;
       }
 
