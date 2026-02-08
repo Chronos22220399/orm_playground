@@ -19,7 +19,7 @@ template <std::size_t N> struct LexResult {
   std::string_view err_msg{};
 
   constexpr Token operator[](std::size_t idx) const {
-    return idx < count ? tokens[idx] : make_token(TokenType::END, 0, 0, 1, 1);
+    return idx < count ? tokens[idx] : make_token(TokenType::End, 0, 0, 1, 1);
   }
 };
 
@@ -34,24 +34,25 @@ template <std::size_t N> class Lexer {
 public:
   constexpr explicit Lexer(meta::FixedString<N> src) : m_src(src) {}
 
-  template <std::size_t MaxTokens> constexpr LexResult<MaxTokens> tokenize() {
+  template <std::size_t MaxTokens>
+  [[nodiscard]] constexpr LexResult<MaxTokens> tokenize() {
     LexResult<MaxTokens> result;
 
     while (result.count < MaxTokens) {
       auto token = next_token();
       result.tokens[result.count++] = token;
 
-      if (token.type == TokenType::UNKNOWN) {
+      if (token.type == TokenType::Unknown) {
         result.has_error = true;
         result.err_pos = token.pos;
-        result.err_len = token.length;
+        result.err_len = token.len;
         result.err_msg = err_msg;
         result.err_line = m_line;
         result.err_col = m_col;
         break;
       }
 
-      if (token.type == TokenType::END)
+      if (token.type == TokenType::End)
         break;
     }
 
@@ -62,7 +63,7 @@ private:
   constexpr Token next_token() {
     skip_whitespace();
     if (at_end())
-      return make_token(TokenType::END, m_pos, 0, m_line, m_col);
+      return make_token(TokenType::End, m_pos, 0, m_line, m_col);
 
     std::size_t start_pos = m_pos;
     std::size_t start_line = m_line;
@@ -73,7 +74,7 @@ private:
     switch (c) {
     // 处理单字符
     case ',':
-      return make_token(TokenType::COMMA, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Comma, start_pos, 1, start_line, start_col);
     case '.': {
       if (!at_end()) {
         if (is_number(peek())) {
@@ -81,54 +82,54 @@ private:
         }
         if (peek() == '.') {
           advance();
-          return make_token(TokenType::UNKNOWN, start_pos, m_pos - start_pos,
+          return make_token(TokenType::Unknown, start_pos, m_pos - start_pos,
                             start_line, start_col);
         }
       }
-      return make_token(TokenType::DOT, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Dot, start_pos, 1, start_line, start_col);
     }
     case '*':
-      return make_token(TokenType::STAR, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Star, start_pos, 1, start_line, start_col);
     case '(':
-      return make_token(TokenType::LPAREN, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Lparen, start_pos, 1, start_line, start_col);
     case ')':
-      return make_token(TokenType::RPAREN, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Rparen, start_pos, 1, start_line, start_col);
     case '+':
-      return make_token(TokenType::PLUS, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Plus, start_pos, 1, start_line, start_col);
     case '-':
-      return make_token(TokenType::MINUS, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Minus, start_pos, 1, start_line, start_col);
     case '/':
-      return make_token(TokenType::SLASH, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Slash, start_pos, 1, start_line, start_col);
     case '?':
-      return make_token(TokenType::PLACEHOLDER, start_pos, 1, start_line,
+      return make_token(TokenType::PlaceHolder, start_pos, 1, start_line,
                         start_col);
     case '=':
-      return make_token(TokenType::EQ, start_pos, 1, start_line, start_col);
+      return make_token(TokenType::Eq, start_pos, 1, start_line, start_col);
 
     // 处理多字符
     case '<':
       if (peek() == '=') {
         advance();
-        return make_token(TokenType::LE, start_pos, 2, start_line, start_col);
+        return make_token(TokenType::Le, start_pos, 2, start_line, start_col);
       } else if (peek() == '>') {
         advance();
-        return make_token(TokenType::NE, start_pos, 2, start_line, start_col);
+        return make_token(TokenType::Ne, start_pos, 2, start_line, start_col);
       } else {
-        return make_token(TokenType::LT, start_pos, 1, start_line, start_col);
+        return make_token(TokenType::Lt, start_pos, 1, start_line, start_col);
       }
     case '>':
       if (peek() == '=') {
         advance();
-        return make_token(TokenType::GE, start_pos, 2, start_line, start_col);
+        return make_token(TokenType::Ge, start_pos, 2, start_line, start_col);
       } else {
-        return make_token(TokenType::GT, start_pos, 1, start_line, start_col);
+        return make_token(TokenType::Gt, start_pos, 1, start_line, start_col);
       }
     case '!':
       if (peek() == '=') {
         advance();
-        return make_token(TokenType::NE, start_pos, 2, start_line, start_col);
+        return make_token(TokenType::Ne, start_pos, 2, start_line, start_col);
       }
-      return make_token(TokenType::UNKNOWN, start_pos, m_pos - start_pos,
+      return make_token(TokenType::Unknown, start_pos, m_pos - start_pos,
                         start_line, start_col);
     case '\'':
       return scan_string('\'', start_pos, start_line, start_col);
@@ -149,7 +150,7 @@ private:
     }
 
     err_msg = "Unknown symbol";
-    return make_token(TokenType::UNKNOWN, start_pos, m_pos - start_pos,
+    return make_token(TokenType::Unknown, start_pos, m_pos - start_pos,
                       start_line, start_col);
   }
 
@@ -171,6 +172,8 @@ private:
   }
 
   constexpr char advance() {
+    if (at_end())
+      return '\0';
     char c = m_src[m_pos++];
     if (c == '\n') {
       m_line++;
@@ -205,14 +208,14 @@ private:
       advance();
       if (at_end() || !is_number(peek())) {
         err_msg = "Trailing dot in numeric literal";
-        return make_token(TokenType::UNKNOWN, start_pos, m_pos - start_pos,
+        return make_token(TokenType::Unknown, start_pos, m_pos - start_pos,
                           line, col);
       }
       // 消耗剩余数字
       while (!at_end() && is_number(peek()))
         advance();
     }
-    return make_token(TokenType::NUMBER, start_pos, m_pos - start_pos, line,
+    return make_token(TokenType::Number, start_pos, m_pos - start_pos, line,
                       col);
   }
 
@@ -226,7 +229,7 @@ private:
           // 处理转义引号
           advance();
         } else {
-          return make_token(TokenType::STRING, start_pos, m_pos - start_pos,
+          return make_token(TokenType::String, start_pos, m_pos - start_pos,
                             line, col);
         }
         // 普通字符
@@ -235,7 +238,7 @@ private:
       }
     }
     err_msg = "Unterminated string literal";
-    return make_token(TokenType::UNKNOWN, start_pos, m_pos - start_pos, line,
+    return make_token(TokenType::Unknown, start_pos, m_pos - start_pos, line,
                       col);
   }
 
@@ -248,11 +251,11 @@ private:
     auto text = std::string_view(m_src).substr(start_pos, m_pos - start_pos);
     TokenType type = lookup_keyword(text);
 
-    if (type != TokenType::IDENTIFIER) {
+    if (type != TokenType::Identifier) {
       return make_token(type, start_pos, m_pos - start_pos, line, col);
     }
 
-    return make_token(TokenType::IDENTIFIER, start_pos, m_pos - start_pos, line,
+    return make_token(TokenType::Identifier, start_pos, m_pos - start_pos, line,
                       col);
   }
 

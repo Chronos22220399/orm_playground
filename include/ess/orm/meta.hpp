@@ -17,10 +17,36 @@ template <std::size_t N> struct FixedString {
       value[i] = s[i];
   }
 
+  template <std::size_t N1> constexpr FixedString(const FixedString<N1> &s) {
+    static_assert(N1 <= N,
+                  "FixedString can only accept a equal length or shorter fs");
+    for (int i = 0; i < N1; ++i)
+      value[i] = s[i];
+    for (int i = N1; i < N; ++i)
+      value[i] = '\0';
+  }
+
   constexpr FixedString() {
     for (int i = 0; i < N; ++i)
       value[i] = '\0';
   };
+
+  constexpr FixedString<N> &operator=(const char *str) {
+    for (int i = 0; str[i] != '\0'; ++i)
+      value[i] = str[i];
+    return *this;
+  }
+
+  template <std::size_t N1> constexpr bool operator==(FixedString<N1> other) {
+    if constexpr (N1 != N)
+      return false;
+
+    for (int i = 0; i < N; ++i) {
+      if (value[i] != other[i])
+        return false;
+    }
+    return true;
+  }
 
   constexpr char &operator[](size_t idx) {
     assert(idx < N && "index out of range");
@@ -44,6 +70,8 @@ template <std::size_t N> struct FixedString {
   constexpr operator std::string_view() const {
     return std::string_view{value, N - 1};
   }
+
+  constexpr bool empty() const { return N == 1; }
 };
 
 template <FixedString Str> constexpr auto operator""_fs() { return Str; }
@@ -182,7 +210,7 @@ constexpr char to_upper(char c) {
 // 将字符转为小写
 constexpr char to_lower(char c) {
   if (c >= 'A' && c <= 'Z')
-    return c + 32;
+    return static_cast<char>(c + 32);
   return c;
 }
 
@@ -241,6 +269,16 @@ template <FixedString Str> consteval auto fs_trim() {
     constexpr auto len = end_res.index - begin_res.index + 1;
     return fs_substr<begin_res.index, len>(Str).value();
   }
+}
+
+template <std::size_t N1, std::size_t N2>
+constexpr bool fs_compare_ignore_len(FixedString<N1> lhs, FixedString<N2> rhs) {
+  std::size_t len = N1 > N2 ? N2 : N1;
+  for (int i = 0; i < len; ++i) {
+    if (lhs[i] != rhs[i])
+      return false;
+  }
+  return true;
 }
 
 struct SqlNull {};

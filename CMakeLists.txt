@@ -82,13 +82,17 @@ target_compile_options(
   # -Rpass=inline
 )
 
+target_compile_definitions(
+  ${exname}
+  PRIVATE
+  ESS_ORM_EXPORTS
+)
+
 target_link_options(
   ${exname}
   PRIVATE
   # -fsanitize=address
 )
-
-# 在你现有的 CMakeLists.txt 末尾添加
 
 option(BUILD_BENCHMARKS "Build benchmarks" OFF)
 

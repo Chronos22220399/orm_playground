@@ -23,7 +23,6 @@ struct DefaultGlobalConfig {
 
   using dialect = dialect::Sqlite3;
 
-  // TODO: 添加多个数据库
   using databases = std::tuple<DefaultDB>;
 
   using default_db = DefaultDB;

@@ -1,18 +1,22 @@
 #pragma once
-#include <core_thirdparties.hpp>
-#include <ess/orm/sql_destroier.hpp>
+#include <ess/orm/defines.h>
+#include <ess/orm/sql_destroier.h>
+#include <memory>
+#include <string_view>
 
 namespace ess::orm {
-class Connection;
 
-class Statement {
+class ESS_ORM_API Connection;
+
+class ESS_ORM_API Statement {
   using StatPtr = std::unique_ptr<sqlite3_stmt, SqliteDestroier>;
+  using ExpanedSqlPtr = std::unique_ptr<char, SqliteDestroier>;
   // 通过 weak_ptr 保证 m_stmt 在 sqlite3* 之前被释放（Statement 在 Connection
   // 之前）
   std::weak_ptr<Connection> m_conn_ref;
   StatPtr m_stmt;
 
-  class StatementGuard {
+  class ESS_ORM_API StatementGuard {
     Statement &m_stmt;
 
   public:
@@ -22,10 +26,7 @@ class Statement {
 
     StatementGuard &operator=(StatementGuard const &) = delete;
 
-    ~StatementGuard() {
-      m_stmt.reset();
-      m_stmt.clear_bindings();
-    }
+    ~StatementGuard();
   };
 
 public:
@@ -39,23 +40,14 @@ public:
 
   Statement &operator=(Statement &&other) noexcept = default;
 
+  // 在cpp中实现，确保调用方使用Statement后能够正确析构
+  ~Statement();
+
   sqlite3_stmt *get() const { return m_stmt.get(); }
 
   sqlite3 *get_db_handle() const;
 
-  void prepare(sqlite3 *db, std::string_view sql) {
-    sqlite3_stmt *raw = nullptr;
-    int rc = sqlite3_prepare_v2(db, sql.data(), static_cast<int>(sql.length()),
-                                &(raw), nullptr);
-    if (rc != SQLITE_OK) {
-      std::string err_msg = "Sqlite Prepare Error: ";
-      err_msg += sqlite3_errmsg(db);
-      err_msg += "\nSQL: ";
-      err_msg += sql;
-      throw std::runtime_error(sqlite3_errmsg(db));
-    }
-    m_stmt.reset(raw);
-  }
+  void prepare(sqlite3 *db, std::string_view sql);
 
   void bind_params(auto &&...args) {
     constexpr auto count = sizeof...(args);
@@ -68,62 +60,31 @@ public:
     // fmt::println("SQL: {}", expanded);
   }
 
-  std::string expanded_sql() {
-    ExpanedSqlPtr expanded(sqlite3_expanded_sql(m_stmt.get()));
+  std::string expanded_sql();
 
-    if (!expanded)
-      return "";
-    return std::string(expanded.get());
-  }
+  void reset();
 
-  void reset() {
-    if (sqlite3_reset(m_stmt.get()) != SQLITE_OK) {
-      throw std::runtime_error(sqlite3_errmsg(sqlite3_db_handle(m_stmt.get())));
-    }
-  }
+  void clear_bindings();
 
-  void clear_bindings() {
-    if (sqlite3_clear_bindings(m_stmt.get()) != SQLITE_OK) {
-      throw std::runtime_error(sqlite3_errmsg(sqlite3_db_handle(m_stmt.get())));
-    }
-  }
-
-  bool next() {
-    if (sqlite3_step(m_stmt.get()) != SQLITE_ROW) {
-      return false;
-    }
-    return true;
-  }
+  bool next();
 
   [[nodiscard]] StatementGuard scope_guard() { return StatementGuard{*this}; }
 
 private:
-  template <std::integral T> void bind_one(int index, T param) {
-    if constexpr (std::is_same_v<T, bool>) {
-      sqlite3_bind_int(m_stmt.get(), index, param ? 1 : 0);
-    } else {
-      sqlite3_bind_int64(m_stmt.get(), index,
-                         static_cast<sqlite3_int64>(param));
-    }
-  }
+  void bind_one(int index, bool param);
 
-  void bind_one(int index, double param) {
-    sqlite3_bind_double(m_stmt.get(), index, param);
-  }
+  void bind_one(int index, int param);
 
-  void bind_one(int index, std::string_view param) {
-    sqlite3_bind_text(m_stmt.get(), index, param.data(),
-                      static_cast<int>(param.length()), SQLITE_TRANSIENT);
-  }
+  void bind_one(int index, int64_t param);
 
-  void bind_one(int index, std::string const &param) {
-    sqlite3_bind_text(m_stmt.get(), index, param.c_str(), -1, SQLITE_TRANSIENT);
-  }
+  void bind_one(int index, double param);
 
-  void bind_one(int index, const char *param) {
-    sqlite3_bind_text(m_stmt.get(), index, param, -1, SQLITE_TRANSIENT);
-  }
+  void bind_one(int index, std::string_view param);
 
-  void bind_one(int index) { sqlite3_bind_null(m_stmt.get(), index); }
+  void bind_one(int index, std::string const &param);
+
+  void bind_one(int index, const char *param);
+
+  void bind_one(int index);
 };
 } // namespace ess::orm

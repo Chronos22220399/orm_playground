@@ -7,107 +7,89 @@ namespace ess::orm::sql {
 // clang-format off
 enum class TokenType : uint8_t {
   // keywords
-  SELECT, INSERT, UPDATE, DELETE,
-  FROM, INTO, VALUES,
-  WHERE, SET,
-  AND, OR, NOT, IN, LIKE, BETWEEN, IS, NULL_,
-  ORDER, BY, ASC, DESC,
-  LIMIT, OFFSET,
-  JOIN, LEFT, RIGHT, INNER, OUTER, ON,
-  AS, DISTINCT,
-  COUNT, SUM, AVG, MAX, MIN,
-  GROUP, HAVING,
-  CREATE, TABLE, DROP, ALTER,
-  INDEX, PRIMARY, KEY, FOREIGN, REFERENCES,
-  DEFAULT, UNQUE, CHECK,
+  Select, Insert, Update, Delete,
+  From, Into, Values,
+  Where, Set,
+  And, Or, Not, In, Like, Between, Is, Null,
+  Order, By, Asc, Desc,
+  Limit, Offset,
+  Join, Left, Right, Inner, Outer, Cross, On,
+  As, Distinct, All,
+  Count, Sum, Avg, Max, Min,
+  Group, Having,
+  Exists,
+  Create, Table, Drop, Alter,
+  Index, Primary, Key, Foreign, References,
+  Default, Unique, Check,
 
   // other
-  IDENTIFIER, NUMBER, STRING, PLACEHOLDER,
+  Identifier, Number, String, PlaceHolder,
 
   // operator
-  COMMA, DOT, STAR, LPAREN, RPAREN,
-  EQ, NE, LT, GT, LE, GE,
-  PLUS, MINUS, SLASH,
+  Comma, Dot, Star, Lparen, Rparen,
+  Eq, Ne, Lt, Gt, Le, Ge,
+  Plus, Minus, Slash,
 
   // specialty
-  END, UNKNOWN
+  End, Unknown
 };
 // clang-format on
 
 // ========== token 结构 =============
 struct Token {
-  TokenType type = TokenType::UNKNOWN;
-  std::size_t pos = 0;    // 起始位置
-  std::size_t length = 0; // 数据长度
-  std::size_t line = 1;   // 行号
-  std::size_t col = 1;    // 列号
+  TokenType type = TokenType::Unknown;
+  std::size_t pos = 0;  // 起始位置
+  std::size_t len = 0;  // 数据长度
+  std::size_t line = 1; // 行号
+  std::size_t col = 1;  // 列号
 
   constexpr bool is(TokenType t) const { return t == type; }
-  constexpr bool is_keyword() const { return type <= TokenType::CHECK; }
-  constexpr bool is_identifier() const { return type == TokenType::IDENTIFIER; }
-  constexpr bool is_end() const { return type == TokenType::END; }
-  constexpr bool is_unknown() const { return type == TokenType::UNKNOWN; }
+  constexpr bool is_keyword() const { return type <= TokenType::Check; }
+  constexpr bool is_identifier() const { return type == TokenType::Identifier; }
+  constexpr bool is_end() const { return type == TokenType::End; }
+  constexpr bool is_unknown() const { return type == TokenType::Unknown; }
 };
 
 inline constexpr Token make_token(TokenType type, std::size_t pos,
                                   std::size_t len, std::size_t line,
                                   std::size_t col) {
-  return Token{
-      .type = type, .pos = pos, .length = len, .line = line, .col = col};
+  return Token{.type = type, .pos = pos, .len = len, .line = line, .col = col};
 }
 
+inline constexpr Token make_end() {
+  return Token{.type = TokenType::End, .pos = 0, .len = 0, .line = 1, .col = 1};
+}
 // ========== 关键字表 =============
 struct KeywordEntry {
   std::string_view name;
   TokenType type;
 };
 
-inline constexpr std::array<KeywordEntry, 45> Keywords = {{
-    {"SELECT", TokenType::SELECT},
-    {"INSERT", TokenType::INSERT},
-    {"UPDATE", TokenType::UPDATE},
-    {"DELETE", TokenType::DELETE},
-    {"FROM", TokenType::FROM},
-    {"INTO", TokenType::INTO},
-    {"VALUES", TokenType::VALUES},
-    {"WHERE", TokenType::WHERE},
-    {"SET", TokenType::SET},
-    {"AND", TokenType::AND},
-    {"OR", TokenType::OR},
-    {"NOT", TokenType::NOT},
-    {"IN", TokenType::IN},
-    {"LIKE", TokenType::LIKE},
-    {"BETWEEN", TokenType::BETWEEN},
-    {"IS", TokenType::IS},
-    {"NULL", TokenType::NULL_},
-    {"ORDER", TokenType::ORDER},
-    {"BY", TokenType::BY},
-    {"ASC", TokenType::ASC},
-    {"DESC", TokenType::DESC},
-    {"LIMIT", TokenType::LIMIT},
-    {"OFFSET", TokenType::OFFSET},
-    {"JOIN", TokenType::JOIN},
-    {"LEFT", TokenType::LEFT},
-    {"RIGHT", TokenType::RIGHT},
-    {"INNER", TokenType::INNER},
-    {"OUTER", TokenType::OUTER},
-    {"ON", TokenType::ON},
-    {"AS", TokenType::AS},
-    {"DISTINCT", TokenType::DISTINCT},
-    {"COUNT", TokenType::COUNT},
-    {"SUM", TokenType::SUM},
-    {"AVG", TokenType::AVG},
-    {"MAX", TokenType::MAX},
-    {"MIN", TokenType::MIN},
-    {"GROUP", TokenType::GROUP},
-    {"HAVING", TokenType::HAVING},
-    {"CREATE", TokenType::CREATE},
-    {"TABLE", TokenType::TABLE},
-    {"DROP", TokenType::DROP},
-    {"ALTER", TokenType::ALTER},
-    {"PRIMARY", TokenType::PRIMARY},
-    {"KEY", TokenType::KEY},
-    {"DEFAULT", TokenType::DEFAULT},
+inline constexpr std::array<KeywordEntry, 48> Keywords = {{
+    {"SELECT", TokenType::Select},   {"INSERT", TokenType::Insert},
+    {"UPDATE", TokenType::Update},   {"DELETE", TokenType::Delete},
+    {"FROM", TokenType::From},       {"INTO", TokenType::Into},
+    {"VALUES", TokenType::Values},   {"WHERE", TokenType::Where},
+    {"SET", TokenType::Set},         {"AND", TokenType::And},
+    {"OR", TokenType::Or},           {"NOT", TokenType::Not},
+    {"IN", TokenType::In},           {"LIKE", TokenType::Like},
+    {"BETWEEN", TokenType::Between}, {"IS", TokenType::Is},
+    {"NULL", TokenType::Null},       {"ORDER", TokenType::Order},
+    {"BY", TokenType::By},           {"ASC", TokenType::Asc},
+    {"DESC", TokenType::Desc},       {"LIMIT", TokenType::Limit},
+    {"OFFSET", TokenType::Offset},   {"JOIN", TokenType::Join},
+    {"LEFT", TokenType::Left},       {"RIGHT", TokenType::Right},
+    {"INNER", TokenType::Inner},     {"OUTER", TokenType::Outer},
+    {"CROSS", TokenType::Cross},     {"ON", TokenType::On},
+    {"AS", TokenType::As},           {"DISTINCT", TokenType::Distinct},
+    {"ALL", TokenType::All},         {"COUNT", TokenType::Count},
+    {"SUM", TokenType::Sum},         {"AVG", TokenType::Avg},
+    {"MAX", TokenType::Max},         {"MIN", TokenType::Min},
+    {"GROUP", TokenType::Group},     {"HAVING", TokenType::Having},
+    {"EXISTS", TokenType::Exists},   {"CREATE", TokenType::Create},
+    {"TABLE", TokenType::Table},     {"DROP", TokenType::Drop},
+    {"ALTER", TokenType::Alter},     {"PRIMARY", TokenType::Primary},
+    {"KEY", TokenType::Key},         {"DEFAULT", TokenType::Default},
 }};
 
 // TODO: 后续可考虑将 Keywords 按照排好序的方式定义，然后 lookup_keyword
@@ -128,6 +110,6 @@ inline constexpr TokenType lookup_keyword(std::string_view keyword) {
     if (match)
       return kw.type;
   }
-  return TokenType::IDENTIFIER;
+  return TokenType::Identifier;
 }
 } // namespace ess::orm::sql

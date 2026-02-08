@@ -48,7 +48,7 @@ public:
 };
 
 // 全局统一事务上下文管理器
-class TransactionContextManager {
+class ESS_ORM_API TransactionContextManager {
   std::unordered_map<std::type_index, TransactionContext *> m_contexts;
 
 public:
@@ -71,9 +71,6 @@ public:
 
   bool in_any_transaction() const { return !m_contexts.empty(); }
 };
-
-inline thread_local TransactionContextManager
-    TransactionContextManager::instance;
 
 // 事务 guard
 template <concepts::database_type DB> class ContextGuard {

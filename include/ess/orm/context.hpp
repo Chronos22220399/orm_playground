@@ -4,6 +4,7 @@
 #include <ess/orm/config/default.hpp>
 #include <ess/orm/connection.h>
 #include <ess/orm/connection_pool.h>
+#include <ess/orm/defines.h>
 #include <ess/orm/statement.h>
 #include <typeindex>
 #include <unordered_map>
@@ -11,7 +12,7 @@
 namespace ess::orm {
 
 // 全局 Context
-class Context {
+class ESS_ORM_API Context {
   std::unordered_map<std::type_index, std::unique_ptr<ConnectionPool>> m_pools =
       {};
   std::once_flag m_init_flag{};
@@ -26,28 +27,14 @@ class Context {
   }
 
 public:
-  static Context &instance() {
-    static Context ctx;
-    return ctx;
-  }
+  static Context &instance();
 
-  // TODO: 后续自动注册用
-  void init() {
-    std::call_once(m_init_flag, [this]() {
-      // init database
-      using databases = config::databases;
-      [this]<std::size_t... I>(std::index_sequence<I...>) {
-        (register_db<std::tuple_element_t<I, databases>>(), ...);
-      }(std::make_index_sequence<config::database_count>{});
-    });
-  }
+  void init();
 
   template <concepts::database_type DB = config::default_db>
   ConnectionPool &conn_pool() {
     auto it = m_pools.find(std::type_index(typeid(DB)));
     if (it == m_pools.end()) {
-      // TODO:
-      // 后续会改成自动注册，因此错误信息需要更改成去配置文件配置相关信息等
       throw std::runtime_error("Database not registered. \n"
                                "Call Context::instance().register_db<DB>() or\n"
                                "Context::instance().init() first.");

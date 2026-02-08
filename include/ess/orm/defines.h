@@ -1,5 +1,19 @@
 #pragma once
 
+#if defined(_WIN32) || defined(__CYGWIN__)
+#ifdef ESS_ORM_EXPORTS
+#define ESS_ORM_API __declspec(dllexport)
+#else
+#define ESS_ORM_API __declspec(dllimport)
+#endif
+#else
+#if __GNUC__ >= 4
+#define ESS_ORM_API __attribute__((visibility("default")))
+#else
+#define ESS_ORM_API
+#endif
+#endif
+
 #ifndef ESS_FUNCTION_SIGNATURE
 #if defined(_MSC_VER)
 #define ESS_FUNCTION_SIGNATURE __FUNCSIG__
