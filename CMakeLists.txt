@@ -49,9 +49,10 @@ file(GLOB ORM_SOURCES "src/ess/orm/*.cpp")
 # common
 add_executable(
   ${exname} 
+  src/conn.cpp
   # src/leetcode.cpp
   # src/main.cpp
-  src/schema.cpp
+  # src/schema.cpp
   # src/test_sqlite3.cpp
   ${ORM_SOURCES}
 )
@@ -61,6 +62,7 @@ target_include_directories(
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/configs
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(
@@ -93,6 +95,7 @@ target_link_options(
   PRIVATE
   # -fsanitize=address
 )
+
 
 option(BUILD_BENCHMARKS "Build benchmarks" OFF)
 

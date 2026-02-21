@@ -1,6 +1,6 @@
 #pragma once
 #include <ess/orm/config/traits.hpp>
-#include <ess/orm/dialect.hpp>
+#include <ess/orm/core/dialect.hpp>
 #include <fmt/color.h>
 
 namespace ess::orm::config {

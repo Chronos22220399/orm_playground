@@ -1,6 +1,6 @@
 #pragma once
 #include <chrono>
-#include <ess/orm/dialect.hpp>
+#include <ess/orm/core/dialect.hpp>
 #include <ess/orm/meta.hpp>
 
 namespace ess::orm::config {

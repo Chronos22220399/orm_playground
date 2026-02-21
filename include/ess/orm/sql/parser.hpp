@@ -9,21 +9,11 @@ enum class SQLErrorKind : uint8_t {
   ExpectedFrom,
   ExpectedTableAfterFrom,
   ExpectedIdentifier,
+  ExpectedIdentifierInWhereClause,
+  ExpectedOperator,
+  ExpectedLiteral,
+  InvalidEnd,
   UnknownError,
-};
-
-struct ParseResult {
-  bool has_error = false;
-  SQLErrorKind error = SQLErrorKind::None;
-  std::size_t err_idx = 0;
-  bool is_star = false;
-  std::size_t column_start = 0;
-  std::size_t column_count = 0;
-
-  static constexpr ParseResult
-  make_error(SQLErrorKind e = SQLErrorKind::UnknownError) {
-    return {.has_error = true, .error = e};
-  }
 };
 
 template <typename T>
@@ -43,12 +33,47 @@ template <result_type auto R> consteval void check() {
       throw "SQL Error: Expected table name after FROM";
     else if constexpr (R.error == SQLErrorKind::ExpectedIdentifier)
       throw "SQL Error: Expected identifier";
+    else if constexpr (R.error == SQLErrorKind::ExpectedIdentifierInWhereClause)
+      throw "SQL Error: Expected identifier in WHERE clause";
+    else if constexpr (R.error == SQLErrorKind::ExpectedOperator)
+      throw "SQL Error: Expected an operator after identifier";
+    else if constexpr (R.error == SQLErrorKind::ExpectedLiteral)
+      throw "SQL Error: Expected an literal in WHERE clause";
+    else if constexpr (R.error == SQLErrorKind::InvalidEnd)
+      throw "SQL Error: Expected Where clause or end";
     else
       throw "SQL Error: Unknown syntax error";
   }
 }
 
+struct Column {
+  std::size_t pos;
+  std::size_t len;
+};
+
+struct ParseResult {
+  bool has_error = false;
+  SQLErrorKind error = SQLErrorKind::None;
+  std::size_t err_idx = 0;
+  bool is_star = false;
+  std::size_t column_start = 0;
+  std::size_t column_count = 0;
+  std::array<Column, 32> column_names{};
+
+  static constexpr ParseResult
+  make_error(SQLErrorKind e = SQLErrorKind::UnknownError) {
+    return {.has_error = true, .error = e};
+  }
+
+  constexpr void add_column(Column col) {
+    if (column_count < column_names.size()) {
+      column_names[column_count++] = col;
+    }
+  }
+};
+
 template <std::size_t TokenCount> class Parser {
+public:
   const std::array<Token, TokenCount> &m_tokens;
   std::size_t m_pos = 0;
 
@@ -78,32 +103,119 @@ public:
     return m_tokens[m_pos + 1];
   }
 
-  constexpr void parse_columns() {}
+  constexpr bool match(TokenType type, ParseResult &result,
+                       SQLErrorKind error) {
+    if (peek().type == type) {
+      advance();
+      return true;
+    }
+    result.has_error = true;
+    result.error = error;
+    return false;
+  }
+
+  constexpr void parse_columns(ParseResult &result) {
+    bool first_vis = false;
+    while (true) {
+      if (peek().type == TokenType::Identifier) {
+        if (first_vis) {
+          result.column_start = peek().pos;
+          first_vis = true;
+        }
+        result.add_column(Column{.pos = peek().pos, .len = peek().len});
+        advance();
+      } else {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedStarOrColumns;
+        return;
+      }
+
+      if (peek().type == TokenType::Comma) {
+        advance();
+      } else {
+        break;
+      }
+    }
+  }
+
+  constexpr bool is_operator(TokenType type) {
+    switch (type) {
+    case TokenType::Eq:
+    case TokenType::Ne:
+    case TokenType::Lt:
+    case TokenType::Gt:
+    case TokenType::Le:
+    case TokenType::Ge:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  constexpr void parse_where_clause(ParseResult &result) {
+    if (peek().type != TokenType::Identifier) {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedIdentifierInWhereClause;
+      return;
+    }
+
+    advance();
+
+    // match the operator
+    if (is_operator(peek().type)) {
+      advance();
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedOperator;
+      return;
+    }
+
+    // match the rhs: string or number
+    if (peek().type == TokenType::String || peek().type == TokenType::Number) {
+      advance();
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedOperator;
+      return;
+    }
+  }
 
   constexpr ParseResult parse_select() {
     ParseResult result{};
-    if (m_tokens[m_pos].type == TokenType::Star) {
+    // parse star or columns
+    if (peek().type == TokenType::Star) {
       result.is_star = true;
-    } else if (m_tokens[m_pos].type == TokenType::Identifier) {
+      advance();
+    } else if (peek().type == TokenType::Identifier) {
       result.is_star = false;
-      parse_columns();
-    }
-    if (m_tokens[m_pos].type == TokenType::From) {
+      parse_columns(result);
+      if (result.has_error)
+        return result;
+    } else {
       result.has_error = true;
       result.error = SQLErrorKind::ExpectedStarOrColumns;
       return result;
     }
-    m_pos++;
 
-    if (m_tokens[m_pos++].type != TokenType::From) {
-      result.has_error = true;
-      result.error = SQLErrorKind::ExpectedFrom;
+    // parse from
+    if (!match(TokenType::From, result, SQLErrorKind::ExpectedFrom)) {
       return result;
     }
 
-    if (m_tokens[m_pos++].type != TokenType::Identifier) {
+    // parse table name
+    if (!match(TokenType::Identifier, result,
+               SQLErrorKind::ExpectedTableAfterFrom)) {
+      return result;
+    }
+
+    if (peek().type == TokenType::Where) {
+      advance();
+      parse_where_clause(result);
+    } else if (at_end()) {
+      return result;
+    } else {
       result.has_error = true;
-      result.error = SQLErrorKind::ExpectedTableAfterFrom;
+      result.error = SQLErrorKind::InvalidEnd;
       return result;
     }
     return result;

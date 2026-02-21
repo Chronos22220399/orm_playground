@@ -1,120 +1,123 @@
 #include <core.hpp>
-#include <ess/orm/config/config.hpp>
-#include <ess/orm/meta.hpp>
-#include <ess/orm/runtime.hpp>
-#include <source_location>
+#include <coroutine>
 #include <sqlite3.h>
-#include <unordered_map>
 
-using namespace ess::orm;
-using namespace ess::orm::meta;
+struct AwaitTimer {
+  bool await_ready() const noexcept { return true; }
 
-class Statement {
-  sqlite3_stmt *m_stmt = nullptr;
+  void await_suspend(std::coroutine_handle<> h) {
+    std::cout << "[Timer] 模拟异步操作中...\n";
+    h.resume(); // 立即恢复，实际开发中这里会交给调度器
+  }
 
-public:
-  Statement(sqlite3 *db, std::string_view sql) {
-    if ((sqlite3_prepare_v2(db, sql.data(), -1, &m_stmt, nullptr)) !=
-        SQLITE_OK) {
-      throw std::runtime_error(sqlite3_errmsg(db));
+  int await_resume() noexcept { return 42; }
+};
+
+template <typename T> struct Task {
+
+  struct promise_type {
+    // 父协程
+    std::coroutine_handle<> continuation;
+    T m_value{0};
+
+    struct final_awaiter {
+      bool await_ready() noexcept { return false; }
+
+      std::coroutine_handle<>
+      await_suspend(std::coroutine_handle<promise_type> h) noexcept {
+        if (h.promise().continuation) {
+          return h.promise().continuation;
+        }
+        return std::noop_coroutine();
+      }
+
+      void await_resume() noexcept {}
+    };
+
+    Task<T> get_return_object() {
+      return {std::coroutine_handle<promise_type>::from_promise(*this)};
     }
+
+    std::suspend_always initial_suspend() noexcept { return {}; }
+
+    final_awaiter final_suspend() noexcept { return {}; }
+
+    std::suspend_always yield_value(T val) {
+      m_value = val;
+      return {};
+    }
+
+    void return_value(T val) { m_value = val; } // 配合 co_return
+
+    void unhandled_exception() {}
   };
 
-  Statement(const Statement &) = delete;
+  std::coroutine_handle<promise_type> handle;
 
-  Statement &operator=(const Statement &) = delete;
+  Task(std::coroutine_handle<promise_type> h) : handle(h) {}
 
-  Statement(Statement &&other) : m_stmt(other.m_stmt) {
-    other.m_stmt = nullptr;
+  Task(Task const &) = delete;
+
+  Task &operator=(Task const &) = delete;
+
+  Task(Task &&other) : handle(other.handle) { other.handle = nullptr; }
+
+  Task &operator=(Task &&other) {
+    if (this != &other) {
+      if (handle)
+        handle.destroy();
+      handle = other.handle;
+      other.handle = nullptr;
+    }
+    return *this;
   }
 
-  ~Statement() { sqlite3_finalize(m_stmt); }
+  T &value() const { return handle.promise().m_value; }
 
-  sqlite3_stmt *get() const { return m_stmt; }
+  void resume() const { handle.resume(); }
 
-  void reset() {
-    sqlite3_reset(m_stmt);
-    sqlite3_clear_bindings(m_stmt);
-  }
+  bool done() const { return handle.done(); }
 
-  template <typename... Args> void bind_params(Args &&...args) {
-    int index = 1;
-    ((bind_one(index++, std::forward<Args>(args))), ...);
-  }
-
-  void execute() {
-    int rc = sqlite3_step(m_stmt);
-    if (rc != SQLITE_DONE && rc != SQLITE_ROW) {
-      throw std::runtime_error(sqlite3_errmsg(sqlite3_db_handle(m_stmt)));
+  ~Task() {
+    if (handle) {
+      handle.destroy();
     }
   }
 
-private:
-  void bind_one(int index, int value) {
-    sqlite3_bind_int(m_stmt, index, value);
-  }
+  auto operator co_await() noexcept {
+    struct AwaitTimer {
+      std::coroutine_handle<promise_type> h;
 
-  void bind_one(int index, double value) {
-    sqlite3_bind_int(m_stmt, index, value);
-  }
+      bool await_ready() noexcept { return false; }
 
-  void bind_one(int index, std::string_view value) {
-    sqlite3_bind_text(m_stmt, index, value.data(), -1, SQLITE_TRANSIENT);
+      std::coroutine_handle<> await_suspend(std::coroutine_handle<> caller) {
+        h.promise().continuation = caller;
+        return h;
+      }
+
+      T await_resume() noexcept { return h.promise().m_value; }
+    };
+
+    return AwaitTimer{handle};
   }
 };
 
-struct Inventory {
-  int id;
-  std::string name;
+Task<int> my_coro() {
+  std::cout << "[my_coro] 开始运行\n";
+  int res = co_await AwaitTimer(); // 挂起 1
+  std::cout << "[my_coro] 拿到 Timer 结果: " << res << "\n";
+  co_return res + 8; // 结果变成 50
+}
 
-  using Schema = dsl::Schema<
-      "inventory",
-      dsl::Field<"id", &Inventory::id, attribute::AutoIncrement,
-                 attribute::PrimaryKey>,
-      dsl::Field<"name", &Inventory::name, attribute::DefaultValue<"''"_fs>>>;
-};
-
-struct InventoryDto {
-  std::string name;
-  using Schema =
-      dsl::Schema<"inventory", dsl::Field<"name", &InventoryDto::name>>;
-};
+Task<int> tst() {
+  std::cout << "[tst] 准备调用 my_coro\n";
+  int final_res = co_await my_coro(); // 挂起 2
+  std::cout << "[tst] 拿到 my_coro 最终结果: " << final_res << "\n";
+  co_return final_res;
+}
 
 int main() {
-  sqlite3 *db = nullptr;
-  int rc = sqlite3_open_v2("data/test.db", &db, SQLITE_OPEN_READWRITE, nullptr);
-  if (rc != SQLITE_OK) {
-    std::cerr << "无法打开数据库: " << sqlite3_errmsg(db) << std::endl;
-    sqlite3_close(db);
-    return rc;
-  }
-
-  sqlite3_stmt *stmt;
-  auto ddl = Inventory::Schema::make_create_table_ddl();
-
-  // fmt::println("{}", ddl);
-  rc = sqlite3_prepare_v2(db, "SELECT name FROM inventory WHERE id = 1", -1,
-                          &stmt, nullptr);
-  if (rc != SQLITE_OK) {
-    std::cerr << "select stmt prepare failed: " << sqlite3_errmsg(db)
-              << std::endl;
-    sqlite3_close(db);
-    return rc;
-  }
-
-  Inventory iv{};
-
-  int res = sqlite3_step(stmt);
-  if (res == SQLITE_ROW) {
-    auto mapper = ResultSetMapper<Inventory>{};
-    mapper.init_mapper(stmt);
-    mapper.map_row(stmt, iv);
-    fmt::println("{}", iv.name);
-  }
-
-  // ess::orm::config::print_config();
-
-  sqlite3_finalize(stmt);
-  sqlite3_close(db);
+  auto coro = tst();
+  coro.resume();
   return 0;
 }

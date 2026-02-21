@@ -1,6 +1,7 @@
 #pragma once
 #include <ess/orm/defines.h>
 #include <ess/orm/sql_destroier.h>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 
@@ -36,7 +37,7 @@ public:
 
   sqlite3 *handle() { return m_db.get(); }
 
-  void execute_raw(std::string const &sql);
+  void execute_raw(std::string_view sql);
 };
 
 } // namespace ess::orm

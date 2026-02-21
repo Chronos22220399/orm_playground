@@ -2,7 +2,7 @@
 #include <concepts>
 #include <ess/orm/common_concept.hpp>
 #include <ess/orm/config/default.hpp>
-#include <ess/orm/dialect.hpp>
+#include <ess/orm/core/dialect.hpp>
 
 namespace ess::orm::config {
 namespace detail {

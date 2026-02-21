@@ -1,5 +1,5 @@
 #pragma once
-#include <ess/orm/dialect.hpp>
+#include <ess/orm/core/dialect.hpp>
 #include <ess/orm/meta.hpp>
 
 struct MainDB {
@@ -16,7 +16,7 @@ struct TestDB {
 };
 
 struct UserConfig {
-  using dialect = ess::orm::dialect::Postgres;
+  using dialect = ess::orm::dialect::Sqlite3;
 
   using databases = std::tuple< //
       MainDB,                   //

@@ -1,7 +1,7 @@
-#include <std.hpp>
 #include <ess/orm/connection.h>
 #include <ess/orm/statement.h>
 #include <sqlite3.h>
+#include <std.hpp>
 
 namespace ess::orm {
 
@@ -49,9 +49,9 @@ Connection::create(std::string const &connection_url) {
   return std::make_shared<Enabler>(connection_url);
 }
 
-void Connection::execute_raw(std::string const &sql) {
+void Connection::execute_raw(std::string_view sql) {
   char *err_msg = nullptr;
-  if (sqlite3_exec(m_db.get(), sql.c_str(), nullptr, nullptr, &err_msg) !=
+  if (sqlite3_exec(m_db.get(), sql.data(), nullptr, nullptr, &err_msg) !=
       SQLITE_OK) {
     std::string err = err_msg ? err_msg : sqlite3_errmsg(m_db.get());
     sqlite3_free(err_msg);

@@ -19,7 +19,7 @@
 // #include <ess/orm/test/stress_test.hpp>
 #include <sqlite3.h>
 
-using namespace ess::orm;
+using namespace ess::orm::config;
 using namespace ess::orm::meta;
 using namespace ess::orm::dsl;
 using namespace ess::orm::attribute;
@@ -33,7 +33,7 @@ void test_lexer_tokenize();
 struct Log {
   int id;
 
-  using Database = config::LoggerDB;
+  using Database = LoggerDB;
   using Schema = Schema<"log", Field<"id", &Log::id>>;
 };
 
@@ -47,7 +47,7 @@ struct Goods {
   GoodsStatus status = GoodsStatus::Normal; // enum
   bool enabled = true;
 
-  using Database = config::default_db;
+  using Database = default_db;
   using Schema = Schema<
       "goods", //
       Field<"id", &Goods::id, PrimaryKey, AutoIncrement>,
@@ -66,28 +66,58 @@ consteval auto query() {
   if constexpr (enable_sql_dynamic_check) {
 
   } else {
-    constexpr auto lex_res = Lexer(Sql).template tokenize<128>();
+    constexpr LexResult<128> lex_res = Lexer(Sql).template tokenize<128>();
+    static_assert(lex_res.tokens[0].type == TokenType::Select);
+    static_assert(lex_res.tokens[1].type == TokenType::Identifier);
+    static_assert(lex_res.tokens[2].type == TokenType::Comma);
+    static_assert(lex_res.tokens[3].type == TokenType::Identifier);
+    static_assert(lex_res.tokens[4].type == TokenType::From);
+    static_assert(lex_res.tokens[5].type == TokenType::Identifier);
+    static_assert(lex_res.tokens[lex_res.count - 1].type == TokenType::End);
     // check<lex_res>();
+
     constexpr auto parse_res = Parser(lex_res.tokens).parse();
     check<parse_res>();
+    constexpr auto names = parse_res.column_names;
+
+    constexpr size_t pos_1 = names[0].pos;
+    constexpr size_t len_1 = names[0].len;
+    constexpr size_t pos_2 = names[1].pos;
+    constexpr size_t len_2 = names[1].len;
+    static_assert(pos_1 == 7);
+    static_assert(len_1 == 2);
+    static_assert(fs_equal(fs_substr<7, 2>(Sql), "id"_fs));
+
+    static_assert(pos_2 == 11);
+    static_assert(len_2 == 4);
+    static_assert(fs_equal(fs_substr<pos_2, len_2>(Sql), "name"_fs));
   }
   return 0;
 }
 
 } // namespace ess::orm::sql
 
+// MARK: ============= Main ==============
+/*
+ *
+ */
 int main() {
-  using namespace ess::orm::sql;
-  auto row = query<"SELECT * FROM s"_fs>();
-
-  // 正确 SQL
-  // constexpr auto r = query<"SELECT * FROM users"_fs>();
+  // using namespace ess::orm::sql;
+  // auto res = query<"SELECT id, name FROM goods WHERE id > 10">();
+  // auto res = ess::orm::query<Goods, "SELECT">();
+  std::string sql = "SELECT * FROM goods WHERE title = 'hello'";
+  ess::orm::Context::instance().conn_pool().acquire()->execute_raw(sql);
 
   return 0;
 }
+/*
+ *
+ */
+// ============= Main ==============
 
 void test_row() {
-  ConnectionPool pool = ConnectionPool(config::MainDB::connection_url, 10);
+  using namespace ess::orm;
+  auto pool = ConnectionPool(MainDB::connection_url, 10);
   auto conn = pool.acquire();
 
   auto ddl = Goods::Schema::make_create_table_ddl();
@@ -155,7 +185,7 @@ void test_row() {
 }
 
 void test_lexer_tokenize() {
-  using namespace sql;
+  using namespace ess::orm::sql;
   // =========================================
   // 测试1：正常的所有 Token 混合
   // =========================================
