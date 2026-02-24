@@ -44,7 +44,7 @@ endfunction()
 add_external_subproject("thirdparties/fmt" "fmt")
 add_external_subproject("thirdparties/sqlite3" "SQLite3")
 
-file(GLOB ORM_SOURCES "src/ess/orm/*.cpp")
+file(GLOB_RECURSE ORM_SOURCES "src/ess/orm/*.cpp")
 
 # common
 add_executable(
@@ -78,7 +78,8 @@ target_compile_options(
   -O3
   -g 
   -fno-omit-frame-pointer
-  # -fsanitize=address
+  -fsanitize=address
+  -fsanitize=undefined
   # -fexceptions
   # -save-temps=obj
   # -Rpass=inline
@@ -93,7 +94,8 @@ target_compile_definitions(
 target_link_options(
   ${exname}
   PRIVATE
-  # -fsanitize=address
+  -fsanitize=address
+  -fsanitize=undefined
 )
 
 

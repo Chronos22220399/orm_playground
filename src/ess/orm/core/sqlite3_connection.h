@@ -1,4 +1,5 @@
 #pragma once
+#include <ess/orm/core/conn_factory.h>
 #include <ess/orm/core/connection.h>
 #include <sqlite3.h>
 #include <string_view>
@@ -6,8 +7,10 @@
 
 namespace ess::orm::core::sqlite3_impl {
 
-class Sqlite3Connection final : public Connection {
-private:
+class ESS_ORM_API Sqlite3Connection final : public Connection {
+protected:
+  friend struct ConnFactory<dialect::Sqlite3>;
+
   explicit Sqlite3Connection(std::string_view connection_url);
 
   void configure();
@@ -20,7 +23,9 @@ private:
   };
 
 public:
+  [[nodiscard]]
   StatementPtr prepare(std::string_view sql) override;
+  [[nodiscard]]
   Statement &prepare_cached(std::string_view sql) override;
 
   void begin_transaction() override;

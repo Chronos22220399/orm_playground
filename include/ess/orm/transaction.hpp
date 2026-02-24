@@ -116,7 +116,14 @@ class Transaction {
 
     TransactionGuard &operator=(TransactionGuard const &) = delete;
 
-    ~TransactionGuard() { m_tx.commit(); }
+    ~TransactionGuard() {
+      try {
+        m_tx.commit();
+        // FIX: 这里要完善
+      } catch (std::exception &e) {
+        throw;
+      }
+    }
   };
 
   void verify_thread() const {
@@ -320,11 +327,10 @@ auto transaction(Func &&func) {
 
   constexpr bool is_read = std::is_same_v<Mode, Read>;
   if (!is_root) {
-    if constexpr (is_read) {
-      if (current_ctx->mode() == TxMode::WRITE) {
+    if constexpr (!is_read) {
+      if (current_ctx->mode() == TxMode::READ) {
         throw std::runtime_error(
-            "Can't nest read transaction inside write transaction, Use write "
-            "transaction or move read outside.\n");
+            "Can't nest write transaction inside read transaction");
       }
     }
   }

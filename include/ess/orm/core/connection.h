@@ -5,7 +5,7 @@
 
 namespace ess::orm::core {
 
-class ESS_ORM_API ConnectionPool;
+// class ESS_ORM_API ConnectionPool;
 
 class ESS_ORM_API Connection {
 protected:
@@ -17,8 +17,8 @@ public:
 
   virtual ~Connection() = default;
 
-  virtual StatementPtr prepare(std::string_view sql) = 0;
-  virtual Statement &prepare_cached(std::string_view sql) = 0;
+  [[nodiscard]] virtual StatementPtr prepare(std::string_view sql) = 0;
+  [[nodiscard]] virtual Statement &prepare_cached(std::string_view sql) = 0;
 
   // transaction
   virtual void begin_transaction() = 0;
@@ -35,4 +35,6 @@ public:
     stmt->next();
   }
 };
+
+using ConnectionPtr = std::unique_ptr<Connection>;
 } // namespace ess::orm::core

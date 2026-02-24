@@ -48,3 +48,29 @@
 - [ ] **连接池监控**：增加运行期连接池水位线、查询耗时等监控指标的输出。
 
 ---
+
+                    之前                              之后
+          ┌──────────────────────┐          ┌──────────────────────┐
+          │   Transaction<M,DB>  │          │    Transaction<M,DB> │
+          │  ┌─────────────────┐ │          │    (thin RAII guard) │
+          │  │ nesting logic   │ │          │    只调 conn 的方法  │
+          │  │ SAVEPOINT sql   │ │          └──────────┬───────────┘
+          │  │ sqlite3_changes │ │                     │
+          │  └─────────────────┘ │          ┌──────────▼───────────┐
+          └──────────┬───────────┘          │    Connection        │
+                     │                      │  ┌─────────────────┐ │
+          ┌──────────▼───────────┐          │  │ begin(mode)     │ │
+          │    Connection        │          │  │ commit()        │ │
+          │  begin_transaction() │          │  │ rollback()      │ │
+          │  commit()            │          │  │ nesting_level() │ │
+          │  rollback()          │          │  │ last_insert_id()│ │
+          │  (未被使用)          │          │  │ affected_rows() │ │
+          └──────────────────────┘          │  └─────────────────┘ │
+                                            └──────────┬───────────┘
+                                                       │ virtual
+                                            ┌──────────▼───────────┐
+                                            │ Sqlite3Connection    │
+                                            │  m_nesting_level     │
+                                            │  SAVEPOINT 逻辑      │
+                                            │  sqlite3_changes()   │
+                                            └──────────────────────┘

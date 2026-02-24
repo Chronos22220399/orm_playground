@@ -5,7 +5,7 @@
 
 namespace ess::orm::core::sqlite3_impl {
 
-class Sqlite3Statemnet final : public Statement {
+class ESS_ORM_API Sqlite3Statemnet final : public Statement {
   struct Deleter {
     void operator()(sqlite3_stmt *stmt) { sqlite3_finalize(stmt); }
   };
@@ -16,6 +16,7 @@ public:
   Sqlite3Statemnet(sqlite3 *db, std::string_view sql);
 
   Sqlite3Statemnet(Sqlite3Statemnet const &) = delete;
+  Sqlite3Statemnet &operator=(Sqlite3Statemnet const &) = delete;
   Sqlite3Statemnet(Sqlite3Statemnet &&) noexcept = default;
   Sqlite3Statemnet &operator=(Sqlite3Statemnet &&) noexcept = default;
 

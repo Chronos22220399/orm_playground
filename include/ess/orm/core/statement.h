@@ -8,7 +8,7 @@ namespace ess::orm::core {
 
 class ESS_ORM_API Statement {
 public:
-  virtual ~Statement() = default;
+  virtual ~Statement() {}
 
   Statement(Statement const &) = delete;
   Statement &operator=(Statement const &) = delete;
@@ -58,7 +58,7 @@ protected:
   virtual void bind_one(int index, int64_t param) = 0;
   virtual void bind_one(int index, double param) = 0;
   virtual void bind_one(int index, std::string_view param) = 0;
-  virtual void bind_one(int index);
+  virtual void bind_one(int index) = 0;
 };
 
 using StatementPtr = std::unique_ptr<Statement>;
