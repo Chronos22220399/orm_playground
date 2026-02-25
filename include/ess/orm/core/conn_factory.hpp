@@ -1,5 +1,5 @@
 #pragma once
-#include <ess/orm/core/connection.h>
+#include <ess/orm/core/connection.hpp>
 #include <ess/orm/core/dialect.hpp>
 #include <string_view>
 

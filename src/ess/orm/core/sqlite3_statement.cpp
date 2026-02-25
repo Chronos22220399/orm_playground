@@ -9,7 +9,8 @@ Sqlite3Statemnet::Sqlite3Statemnet(sqlite3 *db, std::string_view sql)
   if (sqlite3_prepare_v2(m_db_ref, sql.data(), sql.size(), &raw, nullptr) !=
       SQLITE_OK) {
     throw std::runtime_error(get_cur_loc_info() + ": " +
-                             sqlite3_errmsg(m_db_ref));
+                             sqlite3_errmsg(m_db_ref) +
+                             ": invalid sql: " + sql.data());
   }
   m_stmt.reset(raw);
 }

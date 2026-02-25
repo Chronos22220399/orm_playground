@@ -1,6 +1,6 @@
 #pragma once
-#include <ess/orm/core/connection.h>
-#include <ess/orm/core/statement.h>
+#include <ess/orm/core/connection.hpp>
+#include <ess/orm/core/statement.hpp>
 #include <sqlite3.h>
 
 namespace ess::orm::core::sqlite3_impl {

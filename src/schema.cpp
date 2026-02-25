@@ -1,6 +1,6 @@
 #include <core.hpp>
 #include <ess/orm/config/config.hpp>
-#include <ess/orm/connection_pool.h>
+#include <ess/orm/connection_pool.hpp>
 #include <ess/orm/context.hpp>
 #include <ess/orm/parser.hpp>
 #include <ess/orm/result_set_mapper.hpp>
@@ -14,7 +14,7 @@
 // #include <ess/orm/sql/ast/update.hpp>
 #include <ess/orm/sql/lexer.hpp>
 #include <ess/orm/sql/parser.hpp>
-#include <ess/orm/statement.h>
+#include <ess/orm/statement.hpp>
 #include <ess/orm/transaction.hpp>
 // #include <ess/orm/test/stress_test.hpp>
 #include <sqlite3.h>
@@ -29,13 +29,6 @@ void test_multithread();
 void init_database();
 void test_row_asan_safety();
 void test_lexer_tokenize();
-
-struct Log {
-  int id;
-
-  using Database = LoggerDB;
-  using Schema = Schema<"log", Field<"id", &Log::id>>;
-};
 
 enum class GoodsStatus : int { Normal = 0, Disabled, Deleted };
 

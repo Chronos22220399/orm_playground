@@ -4,7 +4,6 @@
 #include <ess/orm/meta.hpp>
 #include <ess/orm/traits.hpp>
 #include <fmt/ranges.h>
-#include <sqlite3.h>
 
 namespace ess::orm::dsl {
 template <meta::FixedString ColumnName, // column name

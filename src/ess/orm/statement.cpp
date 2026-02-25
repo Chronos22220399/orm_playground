@@ -1,5 +1,5 @@
-#include <ess/orm/connection.h>
-#include <ess/orm/statement.h>
+#include <ess/orm/connection.hpp>
+#include <ess/orm/statement.hpp>
 #include <sqlite3.h>
 #include <string>
 

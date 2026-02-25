@@ -8,6 +8,7 @@ struct MainDB {
 
 struct LoggerDB {
   static constexpr std::string_view connection_url = "./data/test1.db";
+  static constexpr std::size_t pool_size = 4;
 };
 
 struct TestDB {

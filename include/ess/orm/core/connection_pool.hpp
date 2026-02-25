@@ -1,9 +1,9 @@
 #pragma once
 #include <chrono>
 #include <deque>
-#include <ess/orm/core/conn_factory.h>
-#include <ess/orm/core/connection.h>
-#include <ess/orm/defines.h>
+#include <ess/orm/core/conn_factory.hpp>
+#include <ess/orm/core/connection.hpp>
+#include <ess/orm/defines.hpp>
 #include <ess/orm/error.hpp>
 
 namespace ess::orm::core {
@@ -49,12 +49,12 @@ public:
   [[nodiscard]] Loan acquire() {
     std::unique_lock lock(m_mutex);
     bool got = m_cv.wait_for(lock, std::chrono::seconds{5}, [this]() {
-      return !m_pool.empty() || !m_shutdown;
+      return !m_pool.empty() || m_shutdown;
     });
 
-    if (m_shutdown)
+    if (m_shutdown) [[unlikely]]
       throw std::runtime_error(get_cur_loc_info() + ": Pool is shutting down");
-    if (!got || m_pool.empty())
+    if (!got || m_pool.empty()) [[unlikely]]
       throw std::runtime_error(get_cur_loc_info() +
                                ": Acquire connection timeout");
     auto conn = std::move(m_pool.front());

@@ -1,14 +1,15 @@
 #pragma once
 #include <ess/orm/config/config.hpp>
-#include <ess/orm/connection_pool.h>
+#include <ess/orm/connection_pool.hpp>
 #include <ess/orm/context.hpp>
 #include <ess/orm/core/dialect.hpp>
 #include <ess/orm/dsl.hpp>
 #include <ess/orm/parser.hpp>
-#include <ess/orm/result.h>
+#include <ess/orm/result.hpp>
 #include <ess/orm/result_set_mapper.hpp>
-#include <ess/orm/row.h>
+#include <ess/orm/row.hpp>
 #include <ess/orm/sql/validator.hpp>
+#include <ess/orm/statement.hpp>
 #include <fmt/format.h>
 
 namespace ess::orm {

@@ -1,7 +1,8 @@
 #include "sqlite3_connection.h"
 #include "sqlite3_statement.h"
-#include <ess/orm/core/connection.h>
+#include <ess/orm/core/connection.hpp>
 #include <ess/orm/error.hpp>
+#include <format>
 #include <sqlite3.h>
 
 namespace ess::orm::core::sqlite3_impl {
@@ -46,15 +47,48 @@ Statement &Sqlite3Connection::prepare_cached(std::string_view sql) {
   return *(it->second);
 }
 
-void Sqlite3Connection::begin_transaction() {
-
+void Sqlite3Connection::begin_transaction(TxMode mode) {
+  if (m_nesting_level == 0) {
+    if (mode == TxMode::WRITE) {
+      execute_raw("BEGIN IMMEDIATE");
+    } else {
+      execute_raw("BEGIN DEFERRED");
+    }
+  } else {
+    execute_raw(std::format("SAVEPOINT sp_{}", m_nesting_level));
+  }
+  ++m_nesting_level;
 };
 
 void Sqlite3Connection::commit() {
-
+  --m_nesting_level;
+  if (m_nesting_level == 0) {
+    execute_raw("COMMIT");
+  } else {
+    execute_raw(std::format("RELEASE SAVEPOINT sp_{}", m_nesting_level));
+  }
 };
 
-void Sqlite3Connection::rollback() {};
+void Sqlite3Connection::rollback() {
+  --m_nesting_level;
+  if (m_nesting_level == 0) {
+    execute_raw("ROLLBACK");
+  } else {
+    execute_raw(std::format("ROLLBACK TO SAVEPOINT sp_{}", m_nesting_level));
+  }
+};
+
+int Sqlite3Connection::nesting_level() const noexcept {
+  return m_nesting_level;
+}
 
 bool Sqlite3Connection::is_open() { return m_db != nullptr; };
+
+int64_t Sqlite3Connection::last_insert_id() {
+  return static_cast<int64_t>(sqlite3_last_insert_rowid(m_db.get()));
+}
+
+int64_t Sqlite3Connection::affected_rows() {
+  return static_cast<int64_t>(sqlite3_changes64(m_db.get()));
+}
 } // namespace ess::orm::core::sqlite3_impl

@@ -2,14 +2,14 @@
 
 ## sqlite3 下的 nest transaction 速查表
 
-| 外层  | 内层  | 同线程       | 跨线程      |
-| ----- | ----- | ------------ | ----------- |
-| Write | Write | ✅ SAVEPOINT | ❌ 死锁     |
-| Write | Read  | ❌ 禁止降级  | ⚠️ 可能工作 |
-| Read  | Read  | ✅ SAVEPOINT | ✅ 并发读   |
-| Read  | Write | ✅ 允许升级  | ✅ 正常     |
-| 无    | Write | ✅ 正常      | ✅ 串行     |
-| 无    | Read  | ✅ 正常      | ✅ 并发     |
+| 外层  | 内层  |              |
+| ----- | ----- | ------------ |
+| Write | Write | ✅ SAVEPOINT |
+| Write | Read  | ✅ 允许降级  |
+| Read  | Read  | ✅ SAVEPOINT |
+| Read  | Write | ❌ 禁止升级  |
+| 无    | Write | ✅ 正常      |
+| 无    | Read  | ✅ 正常      |
 
 ---
 
@@ -21,13 +21,11 @@
 | `BEGIN IMMEDIATE` | 立即获取写锁 | 阻塞其他写 |
 | `SAVEPOINT`       | 继承外层锁   | 无额外锁   |
 
+> [Sqlite3 锁机制参考](https://huili.github.io/lockandimplement/machining.html)
+
 ---
 
 ### 说明
-
-#### 死锁原因
-
-在库的 sqlite3 方言下，Write 事务启动时对应 `BEGIN IMMEDIATE`，这会获取保留锁，而 Read 事务启动时对应 `BEGIN DEFERRED`，这会获取共享锁，对于同一个数据库，在获取保留锁后在嵌套事务(nest transaction)下获取共享锁会导致死锁发生
 
 #### 强调
 

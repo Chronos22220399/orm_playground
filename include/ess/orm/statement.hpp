@@ -1,6 +1,6 @@
 #pragma once
-#include <ess/orm/defines.h>
-#include <ess/orm/sql_destroier.h>
+#include <ess/orm/defines.hpp>
+#include <ess/orm/sql_destroier.hpp>
 #include <memory>
 #include <string_view>
 

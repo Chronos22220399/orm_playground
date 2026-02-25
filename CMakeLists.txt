@@ -100,10 +100,10 @@ target_link_options(
 
 
 option(BUILD_BENCHMARKS "Build benchmarks" OFF)
-
-if(BUILD_BENCHMARKS)
-    add_subdirectory(bench)
-endif()
+#
+# if(BUILD_BENCHMARKS)
+#     add_subdirectory(bench)
+# endif()
 
 # target_precompile_headers(
 #   ${exname}

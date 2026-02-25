@@ -1,20 +1,11 @@
 #pragma once
-#include <std.hpp>
 #include <chrono>
-#include <ess/orm/connection.h>
+#include <ess/orm/connection.hpp>
+#include <std.hpp>
 
 namespace ess::orm {
 
 class ConnectionPool {
-public:
-private:
-  std::deque<std::shared_ptr<Connection>> m_pool;
-  mutable std::mutex m_mutex;
-  mutable std::condition_variable m_cv;
-  std::string m_connection_url;
-  std::size_t m_pool_size;
-  std::atomic<bool> m_shutdown;
-
 public:
   ConnectionPool(std::string_view connection_url, size_t pool_size)
       : m_connection_url(connection_url), m_pool_size(pool_size),
@@ -33,7 +24,7 @@ public:
 
   std::shared_ptr<Connection> acquire() {
     std::unique_lock lock(m_mutex);
-    if (!m_cv.wait_for(lock, std::chrono::seconds{5},
+    if (!m_cv.wait_for(lock, std::chrono::seconds{30},
                        [this] { return !m_pool.empty(); })) {
       throw std::runtime_error("Connection pool exhausted, Deadlock may "
                                "occured or too many concurrent threads.");
@@ -60,5 +51,13 @@ public:
     std::lock_guard lock(m_mutex);
     return m_pool.size();
   }
+
+private:
+  std::deque<std::shared_ptr<Connection>> m_pool;
+  mutable std::mutex m_mutex;
+  mutable std::condition_variable m_cv;
+  std::string m_connection_url;
+  std::size_t m_pool_size;
+  std::atomic<bool> m_shutdown;
 };
 } // namespace ess::orm

@@ -1,8 +1,8 @@
 #pragma once
-#include <ess/orm/connection_pool.h>
+#include <ess/orm/connection_pool.hpp>
 #include <ess/orm/context.hpp>
 #include <ess/orm/parser.hpp>
-#include <ess/orm/result.h>
+#include <ess/orm/result.hpp>
 #include <ess/orm/result_set_mapper.hpp>
 #include <thread>
 
@@ -119,7 +119,7 @@ class Transaction {
     ~TransactionGuard() {
       try {
         m_tx.commit();
-        // FIX: 这里要完善
+        // FIX:
       } catch (std::exception &e) {
         throw;
       }
@@ -168,49 +168,51 @@ private:
     constexpr auto sql_type = parser::begin_with<sql>(); // 编译时常量
 
     valide_query<Table, sql_type>();
-
-    Statement &stmt = m_conn->prepare_cached(sql);
-    auto scope = stmt.scope_guard();
-    stmt.bind_params(std::forward<Args>(args)...);
-
-    ResultSetMapper<Table> mapper;
-    mapper.init_mapper(stmt.get());
-
-    if constexpr (sql_type == SqlType::SELECT) {
-      return execute_select<ResultTag, Table>(stmt);
-    } else if constexpr (sql_type == SqlType::INSERT) {
-      stmt.next();
-      return InsertResult{.last_insert_id =
-                              sqlite3_last_insert_rowid(m_conn->handle()),
-                          .affected_rows = sqlite3_changes(m_conn->handle())};
-    } else if constexpr (sql_type == SqlType::UPDATE ||
-                         sql_type == SqlType::DELETE) {
-      stmt.next();
-      return ModifyResult{.affected_rows = sqlite3_changes(m_conn->handle())};
-    }
+    //
+    // Statement &stmt = m_conn->prepare_cached(sql);
+    // auto scope = stmt.scope_guard();
+    // stmt.bind_params(std::forward<Args>(args)...);
+    //
+    // ResultSetMapper<Table> mapper;
+    // mapper.init_mapper(stmt.get());
+    //
+    // if constexpr (sql_type == SqlType::SELECT) {
+    //   return execute_select<ResultTag, Table>(stmt);
+    // } else if constexpr (sql_type == SqlType::INSERT) {
+    //   stmt.next();
+    //   return InsertResult{.last_insert_id =
+    //                           sqlite3_last_insert_rowid(m_conn->handle()),
+    //                       .affected_rows =
+    //                       sqlite3_changes(m_conn->handle())};
+    // } else if constexpr (sql_type == SqlType::UPDATE ||
+    //                      sql_type == SqlType::DELETE) {
+    //   stmt.next();
+    //   return ModifyResult{.affected_rows =
+    //   sqlite3_changes(m_conn->handle())};
+    // }
   }
 
   template <typename ResultTag, concepts::table_type Table>
   auto execute_select(Statement &stmt) {
     ResultSetMapper<Table> mapper;
-    mapper.init_mapper(stmt.get());
+    // mapper.init_mapper(stmt.get());
 
-    if constexpr (std::is_same_v<ResultTag, AsEntity>) {
-      std::vector<Table> res{};
-      res.reserve(16);
-      while (stmt.next()) {
-        res.emplace_back();
-        mapper.map_row(stmt.get(), res.back());
-      }
-      return res;
-    } else {
-      std::vector<Row> res{};
-      res.reserve(16);
-      while (stmt.next()) {
-        res.push_back(mapper.map_row(stmt.get()));
-      }
-      return res;
-    }
+    // if constexpr (std::is_same_v<ResultTag, AsEntity>) {
+    //   std::vector<Table> res{};
+    //   res.reserve(16);
+    //   while (stmt.next()) {
+    //     res.emplace_back();
+    //     mapper.map_row(stmt.get(), res.back());
+    //   }
+    //   return res;
+    // } else {
+    //   std::vector<Row> res{};
+    //   res.reserve(16);
+    //   while (stmt.next()) {
+    //     res.push_back(mapper.map_row(stmt.get()));
+    //   }
+    //   return res;
+    // }
   }
 
 public:
@@ -287,25 +289,25 @@ public:
   auto query_scaler(return_type<R>, Args &&...args) {
 
     verify_thread();
-    using namespace parser;
-
-    // constexpr auto sql = meta::fs_to_upper(Sql);
-    constexpr auto sql = Sql;
-    constexpr auto sql_type = parser::begin_with<sql>(); // 编译时常量
-
-    static_assert(sql_type == parser::SqlType::SELECT,
-                  "query_scaler only support select.");
-
-    std::shared_ptr<Connection> conn =
-        Context::instance().conn_pool<DB>().acquire();
-
-    Statement &stmt = conn->prepare_cached(sql);
-    auto scope = stmt.scope_guard();
-    stmt.bind_params(std::forward<Args>(args)...);
-
-    if (stmt.next()) {
-      return get_column<R>(stmt.get(), 0);
-    }
+    // using namespace parser;
+    //
+    // // constexpr auto sql = meta::fs_to_upper(Sql);
+    // constexpr auto sql = Sql;
+    // constexpr auto sql_type = parser::begin_with<sql>(); // 编译时常量
+    //
+    // static_assert(sql_type == parser::SqlType::SELECT,
+    //               "query_scaler only support select.");
+    //
+    // std::shared_ptr<Connection> conn =
+    //     Context::instance().conn_pool<DB>().acquire();
+    //
+    // Statement &stmt = conn->prepare_cached(sql);
+    // auto scope = stmt.scope_guard();
+    // stmt.bind_params(std::forward<Args>(args)...);
+    //
+    // if (stmt.next()) {
+    //   return get_column<R>(stmt.get(), 0);
+    // }
     // 没有结果则返回默认值或者抛出异常
     return R{};
   }

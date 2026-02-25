@@ -1,5 +1,5 @@
 #include "sqlite3_connection.h"
-#include <ess/orm/core/conn_factory.h>
+#include <ess/orm/core/conn_factory.hpp>
 
 namespace ess::orm::core {
 

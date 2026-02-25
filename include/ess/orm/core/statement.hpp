@@ -1,6 +1,6 @@
 #pragma once
 #include <ess/orm/core/dialect.hpp>
-#include <ess/orm/defines.h>
+#include <ess/orm/defines.hpp>
 #include <memory>
 #include <string_view>
 
