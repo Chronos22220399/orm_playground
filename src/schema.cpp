@@ -95,13 +95,14 @@ consteval auto query() {
  *
  */
 int main() {
-  // auto res = query<"SELECT id, name FROM goods WHERE id > 10">();
-  auto res = ess::orm::query<Goods, "SELECT * FROM goods">();
+  auto res = ess::orm::sql::query<"SELECT id, name FROM goods WHERE id > 10">();
+  // auto res = ess::orm::query<Goods, "SELECT * FROM goods">();
   std::string sql = "SELECT * FROM goods WHERE title = 'hello'";
+
   ess::orm::Context::instance().conn_pool().acquire()->execute_raw(sql);
 
-  ess::orm::transaction(
-      [](auto &tx) { tx.template query<Goods, "SELECT * FROM goods">(); });
+  // ess::orm::transaction(
+  //     [](auto &tx) { tx.template query<Goods, "SELECT * FROM goods">(); });
 
   return 0;
 }
