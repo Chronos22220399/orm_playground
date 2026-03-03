@@ -1,7 +1,9 @@
 #pragma once
+#include <ess/orm/context.hpp>
 #include <ess/orm/core/connection.hpp>
 #include <ess/orm/core/connection_pool.hpp>
 #include <ess/orm/core/transaction.hpp>
+#include <ess/orm/error.hpp>
 #include <optional>
 
 namespace ess::orm {
@@ -39,33 +41,41 @@ auto transaction(Func &&func) {
     }
   }
 
-  std::optional<typename core::ConnectionPool<DB>::Loan> loan = std::nullopt;
+  std::optional<core::Connection *> loan = std::nullopt;
   if (is_root) {
-    loan.emplace();
+    loan.emplace(Context::instance().conn_pool().acquire().get());
+  } else {
+    loan = active;
   }
 
-  // Transaction<Mode, DB> tx =
-  //     Transaction<Mode, DB>(conn_ptr, current_ctx->nesting_level());
-  //
-  // tx.begin();
-  // try {
-  //   using ret_type = std::invoke_result_t<Func, Transaction<Mode, DB> &>;
-  //   if constexpr (std::is_void_v<ret_type>) {
-  //     std::invoke(std::forward<Func>(func), tx);
-  //     tx.commit();
-  //     return;
-  //   } else {
-  //     auto result = std::invoke(std::forward<Func>(func), tx);
-  //     tx.commit();
-  //     return result;
-  //   }
-  // } catch (...) {
-  //   tx.rollback();
-  //   // TODO: 后续可通过在错误中添加对数据库类型的比较实现彻底的数据库事务隔离
-  //   //
-  //   当前的实现下，嵌套的数据库A的事务rollback后，抛出的错误会直接影响到外层的事务，会让外层随之rollback，后续可按照todo的更改
-  //   throw;
-  // }
+  if (!loan.has_value()) {
+    throw std::runtime_error(get_cur_loc_info() + ": " +
+                             "Cannot get a connection for transaction");
+  }
+  core::Transaction<Mode, DB> tx(*(loan.value()));
+
+  tx.begin();
+  try {
+    using ret_type = std::invoke_result_t<Func, core::Transaction<Mode, DB> &>;
+    if constexpr (std::is_void_v<ret_type>) {
+      std::invoke(std::forward<Func>(func), tx);
+      tx.commit();
+      return;
+    } else {
+      auto result = std::invoke(std::forward<Func>(func), tx);
+      tx.commit();
+      return result;
+    }
+    // FIX: 当前实现并不完善
+  } catch (...) {
+    tx.rollback();
+    /* TODO: 后续可通过在错误中添加对数据库类型的比较实现彻底的数据库事务隔离
+     *
+     *
+     * 当前的实现下，嵌套的数据库A的事务rollback后，抛出的错误会直接影响到外层的事务，会让外层随之rollback，后续可按照todo的更改
+    throw;
+     */
+  }
 }
 
 } // namespace ess::orm

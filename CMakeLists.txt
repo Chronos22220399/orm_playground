@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 project(
   orm
   LANGUAGES C CXX
+  VERSION 0.0.1
 )
 
 set(exname orm)

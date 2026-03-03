@@ -1,6 +1,7 @@
 #pragma once
 #include <chrono>
 #include <deque>
+#include <ess/orm/config/config.hpp>
 #include <ess/orm/core/conn_factory.hpp>
 #include <ess/orm/core/connection.hpp>
 #include <ess/orm/defines.hpp>
@@ -44,6 +45,7 @@ public:
 
     Connection *operator->() const { return m_conn.get(); }
     Connection &operator*() const { return *m_conn.get(); }
+    Connection *get() const { return m_conn.get(); }
   };
 
   [[nodiscard]] Loan acquire() {

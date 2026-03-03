@@ -46,6 +46,10 @@ public:
 
   Connection &connection() const { return *m_conn; }
 
+  template <concepts::database_type DataBase, meta::FixedString SQL,
+            typename... Args>
+  auto query(Args &&...args) {}
+
 private:
   Connection *m_conn = nullptr;
   bool m_finished = false;
