@@ -1,29 +1,22 @@
 #pragma once
 #include <chrono>
 #include <deque>
+#include <ess/orm/common/defines.hpp>
+#include <ess/orm/common/error.hpp>
 #include <ess/orm/config/config.hpp>
 #include <ess/orm/core/conn_factory.hpp>
 #include <ess/orm/core/connection.hpp>
-#include <ess/orm/defines.hpp>
-#include <ess/orm/error.hpp>
 
 namespace ess::orm::core {
 
 template <dialect::dialect_type Dialect>
 class ESS_ORM_API ConnectionPool
     : public std::enable_shared_from_this<ConnectionPool<Dialect>> {
+
 public:
-  [[nodiscard]] static std::shared_ptr<ConnectionPool>
-  create(std::string_view conn_url, std::size_t pool_size) {
-    return std::shared_ptr<ConnectionPool>(
-        new ConnectionPool(conn_url, pool_size));
-  }
-
-  ~ConnectionPool() {
-    m_shutdown.store(true);
-    m_cv.notify_all();
-  }
-
+  /*
+   * used to return the loaned connection
+   */
   class Loan {
     std::shared_ptr<ConnectionPool> m_pool_ref;
     ConnectionPtr m_conn;
@@ -48,6 +41,26 @@ public:
     Connection *get() const { return m_conn.get(); }
   };
 
+  /*
+   * the factory method that create connection pool
+   */
+  [[nodiscard]] static std::shared_ptr<ConnectionPool>
+  create(std::string_view conn_url, std::size_t pool_size) {
+    return std::shared_ptr<ConnectionPool>(
+        new ConnectionPool(conn_url, pool_size));
+  }
+
+  /*
+   * shutdown the pool and return all resourses
+   */
+  ~ConnectionPool() {
+    m_shutdown.store(true);
+    m_cv.notify_all();
+  }
+
+  /*
+   * acquire the connection wrapped by the loan object
+   */
   [[nodiscard]] Loan acquire() {
     std::unique_lock lock(m_mutex);
     bool got = m_cv.wait_for(lock, std::chrono::seconds{5}, [this]() {
@@ -64,12 +77,26 @@ public:
     return Loan(this->shared_from_this(), std::move(conn));
   }
 
+  /*
+   * return the remained connection count
+   */
   size_t available() const {
     std::lock_guard lock(m_mutex);
     return m_pool.size();
   }
 
+  /*
+   * return whether the pool is empty
+   */
+  bool empty() const {
+    std::lock_guard lock(m_mutex);
+    return m_pool.empty();
+  }
+
 private:
+  /*
+   * init the pool
+   */
   ConnectionPool(std::string_view connection_url, size_t pool_size)
       : m_connection_url(connection_url), m_pool_size(pool_size),
         m_shutdown(false) {
@@ -78,6 +105,9 @@ private:
     }
   }
 
+  /*
+   * return the connection
+   */
   void release(ConnectionPtr conn) {
     if (m_shutdown)
       return;

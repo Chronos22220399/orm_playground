@@ -1,8 +1,8 @@
 #pragma once
-#include <ess/orm/attribute.hpp>
-#include <ess/orm/common_concept.hpp>
-#include <ess/orm/meta.hpp>
-#include <ess/orm/traits.hpp>
+#include <ess/orm/common/concept.hpp>
+#include <ess/orm/common/meta.hpp>
+#include <ess/orm/dsl/attribute.hpp>
+#include <ess/orm/dsl/traits.hpp>
 #include <fmt/ranges.h>
 
 namespace ess::orm::dsl {

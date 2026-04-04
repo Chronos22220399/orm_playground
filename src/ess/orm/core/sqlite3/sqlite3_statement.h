@@ -33,6 +33,7 @@ public:
   std::string column_text(int index) const override;
   bool column_is_null(int index) const override;
   std::string column_name(int index) const override;
+  meta::ColumnType column_type(int index) const override;
 
 private:
   void bind_one(int index, bool param) override;

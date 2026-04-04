@@ -1,10 +1,9 @@
-#include <core.hpp>
 #include <ess/orm/config/config.hpp>
-#include <ess/orm/connection_pool.hpp>
-#include <ess/orm/context.hpp>
-#include <ess/orm/parser.hpp>
-#include <ess/orm/result_set_mapper.hpp>
-#include <ess/orm/runtime.hpp>
+#include <ess/orm/core/connection_pool.hpp>
+#include <ess/orm/core/context.hpp>
+// #include <ess/orm/dsl/parser.hpp>
+#include <ess/orm/core/result_set_mapper.hpp>
+#include <ess/orm/core/runtime.hpp>
 // #include <ess/orm/sql/ast/common.hpp>
 // #include <ess/orm/sql/ast/delete.hpp>
 // #include <ess/orm/sql/ast/insert.hpp>
@@ -12,12 +11,12 @@
 // #include <ess/orm/sql/ast/statement.hpp>
 // #include <ess/orm/sql/ast/storage.hpp>
 // #include <ess/orm/sql/ast/update.hpp>
+#include <ess/orm/core/statement.hpp>
+#include <ess/orm/core/transaction.hpp>
 #include <ess/orm/sql/lexer.hpp>
 #include <ess/orm/sql/parser.hpp>
-#include <ess/orm/statement.hpp>
-#include <ess/orm/transaction.hpp>
 // #include <ess/orm/test/stress_test.hpp>
-#include <sqlite3.h>
+// #include <sqlite3.h>
 
 using namespace ess::orm::config;
 using namespace ess::orm::meta;
@@ -95,15 +94,9 @@ consteval auto query() {
  *
  */
 int main() {
-  auto res = ess::orm::sql::query<"SELECT id, name FROM goods WHERE id > 10">();
-  // auto res = ess::orm::query<Goods, "SELECT * FROM goods">();
   std::string sql = "SELECT * FROM goods WHERE title = 'hello'";
 
   ess::orm::Context::instance().conn_pool().acquire()->execute_raw(sql);
-
-  // ess::orm::transaction(
-  //     [](auto &tx) { tx.template query<Goods, "SELECT * FROM goods">(); });
-
   return 0;
 }
 /*

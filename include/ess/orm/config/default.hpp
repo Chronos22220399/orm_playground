@@ -1,7 +1,7 @@
 #pragma once
 #include <chrono>
+#include <ess/orm/common/meta.hpp>
 #include <ess/orm/core/dialect.hpp>
-#include <ess/orm/meta.hpp>
 
 namespace ess::orm::config {
 namespace inner_default {
@@ -26,6 +26,9 @@ struct DefaultGlobalConfig {
   using databases = std::tuple<DefaultDB>;
 
   using default_db = DefaultDB;
+
+  // default result set container size
+  static constexpr std::size_t default_container_size = 100;
 };
 } // namespace inner_default
 

@@ -1,11 +1,11 @@
 #pragma once
-#include <ess/orm/common_concept.hpp>
+#include <ess/orm/common/concept.hpp>
+#include <ess/orm/common/defines.hpp>
 #include <ess/orm/config/config.hpp>
 #include <ess/orm/config/default.hpp>
 #include <ess/orm/core/connection.hpp>
 #include <ess/orm/core/connection_pool.hpp>
 #include <ess/orm/core/statement.hpp>
-#include <ess/orm/defines.hpp>
 #include <typeindex>
 #include <unordered_map>
 

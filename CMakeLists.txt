@@ -11,13 +11,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# include(FetchContent)
-# FetchContent_Declare(
-#   doctest
-#   GIT_REPOSITORY https://github.com/doctest/doctest.git
-#   GIT_TAG v2.4.11
-# )
-# FetchContent_MakeAvailable(doctest)
 
 message(STATUS "=== C++ Compiler Info ===")
 message(STATUS "CXX Compiler Path: ${CMAKE_CXX_COMPILER}")
@@ -44,17 +37,14 @@ endfunction()
 
 add_external_subproject("thirdparties/fmt" "fmt")
 add_external_subproject("thirdparties/sqlite3" "SQLite3")
+add_external_subproject("thirdparties/expected" "expected")
 
 file(GLOB_RECURSE ORM_SOURCES "src/ess/orm/*.cpp")
 
 # common
 add_executable(
   ${exname} 
-  src/conn.cpp
-  # src/leetcode.cpp
-  # src/main.cpp
-  # src/schema.cpp
-  # src/test_sqlite3.cpp
+  src/main.cpp
   ${ORM_SOURCES}
 )
 
@@ -71,6 +61,7 @@ target_link_libraries(
   PRIVATE
   fmt::fmt
   SQLite3
+  tl::expected
 )
 
 target_compile_options(

@@ -1,5 +1,8 @@
 #pragma once
-#include <ess/orm/meta.hpp>
+#include <ess/orm/common/meta.hpp>
+#include <ess/orm/core/defines.hpp>
+#include <ess/orm/core/result.hpp>
+#include <ess/orm/core/row.hpp>
 
 namespace ess::orm::concepts {
 namespace detail {
@@ -71,6 +74,14 @@ template <typename Table>
 concept table_type = requires {
   typename Table::Database;
   typename Table::Schema;
+};
+
+/*
+ */
+template <typename T, std::size_t V>
+concept container_size_api = requires {
+  typename core::ContainerSize<T::value>;
+  requires std::is_same_v<T, core::ContainerSize<T::value>>;
 };
 
 } // namespace ess::orm::concepts

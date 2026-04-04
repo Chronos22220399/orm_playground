@@ -1,6 +1,7 @@
 #pragma once
+#include <ess/orm/common/defines.hpp>
+#include <ess/orm/common/meta.hpp>
 #include <ess/orm/core/dialect.hpp>
-#include <ess/orm/defines.hpp>
 #include <memory>
 #include <string_view>
 
@@ -26,6 +27,7 @@ public:
   virtual std::string column_text(int index) const = 0;
   virtual bool column_is_null(int index) const = 0;
   virtual std::string column_name(int index) const = 0;
+  virtual meta::ColumnType column_type(int index) const = 0;
 
   void bind_params(auto &&...args) {
     constexpr auto count = sizeof...(args);

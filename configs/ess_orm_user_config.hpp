@@ -1,6 +1,6 @@
 #pragma once
+#include <ess/orm/common/meta.hpp>
 #include <ess/orm/core/dialect.hpp>
-#include <ess/orm/meta.hpp>
 
 struct MainDB {
   static constexpr std::string_view connection_url = "./data/test.db";
@@ -26,4 +26,6 @@ struct UserConfig {
       >;
 
   using default_db = MainDB;
+
+  static constexpr std::size_t default_container_size = 10;
 };

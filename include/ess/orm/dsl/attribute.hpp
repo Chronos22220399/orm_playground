@@ -1,6 +1,6 @@
 #pragma once
-#include <ess/orm/common_concept.hpp>
-#include <ess/orm/meta.hpp>
+#include <ess/orm/common/concept.hpp>
+#include <ess/orm/common/meta.hpp>
 #include <fmt/format.h>
 
 namespace ess::orm::attribute {

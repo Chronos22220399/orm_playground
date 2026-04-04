@@ -1,4 +1,5 @@
 #pragma once
+#include <ess/orm/core/defines.hpp>
 #include <ess/orm/core/dialect.hpp>
 #include <ess/orm/core/statement.hpp>
 #include <string_view>
@@ -6,8 +7,6 @@
 namespace ess::orm::core {
 
 // class ESS_ORM_API ConnectionPool;
-
-enum class TxMode { READ, WRITE };
 
 class ESS_ORM_API Connection {
 protected:

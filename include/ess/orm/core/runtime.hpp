@@ -1,81 +1,145 @@
 #pragma once
-#include <ess/orm/context.hpp>
-#include <ess/orm/core/connection.hpp>
-#include <ess/orm/core/connection_pool.hpp>
+#include <ess/orm/core/impl.hpp>
+#include <ess/orm/core/result.hpp>
 #include <ess/orm/core/transaction.hpp>
-#include <ess/orm/error.hpp>
+
 #include <optional>
 
 namespace ess::orm {
+/*
+ * @author: Ess
+ */
+template <concepts::table_type Table, meta::FixedString SQL,
+          template <typename...> class Container = std::vector,
+          typename ContainerSize =
+              core::ContainerSize<config::default_container_size>,
+          typename... Args>
+auto query(Args &&...args) {
+  return impl::query_impl<core::table_tag<Table>, SQL, Container,
+                          ContainerSize>(core::conn_ptr_wrapper{nullptr},
+                                         std::forward<Args>(args)...);
+}
+
+/*
+ * @author: ess
+ */
+template <meta::FixedString SQL,
+          template <typename...> class Container = std::vector,
+          typename ContainerSize =
+              core::ContainerSize<config::default_container_size>,
+          typename... Args>
+auto query(Args &&...args) {
+  return impl::query_impl<core::table_tag<void>, SQL, Container, ContainerSize>(
+      core::conn_ptr_wrapper{nullptr}, std::forward<Args>(args)...);
+}
 
 namespace impl {
+using LoanType =
+    std::decay_t<decltype(Context::instance().conn_pool().acquire())>;
+/*
+ * @author: ess
+ */
 template <concepts::database_type DB> struct TxState {
-  static thread_local core::Connection *active_conn;
+  static thread_local std::optional<LoanType> active_loan;
   static thread_local core::TxMode active_mode;
 };
 
+/*
+ * @author: ess
+ */
 template <concepts::database_type DB>
-thread_local core::Connection *TxState<DB>::active_conn = nullptr;
+thread_local std::optional<LoanType> TxState<DB>::active_loan = std::nullopt;
 
+/*
+ * @author: ess
+ */
 template <concepts::database_type DB>
 thread_local core::TxMode TxState<DB>::active_mode = core::TxMode::WRITE;
 
 } // namespace impl
 
-template <typename Func, typename Mode, typename DB>
-concept tx_callback_func = std::invocable<Func, core::Transaction<Mode, DB> &>;
-
-// 显式模式
+/*
+ * @author: Ess
+ */
 template <core::transaction_mode Mode = core::Write,
           concepts::database_type DB = config::default_db, typename Func>
-  requires tx_callback_func<Func, Mode, DB>
+  requires core::tx_callback_func<Func, Mode, DB>
 auto transaction(Func &&func) {
-  auto *&active = impl::TxState<DB>::active_conn;
-  bool is_root = active == nullptr;
 
-  if constexpr (std::is_same_v<Mode, core::Write>) {
-    if (!is_root && impl::TxState<DB>::active_mode == core::TxMode::READ) {
-      throw std::runtime_error(
-          get_cur_loc_info() +
-          ": Cannot nest write transaction inside read transaction");
+  using ret_type = std::invoke_result_t<Func, core::Transaction<Mode, DB> &>;
+  auto execute_tx = [&]() -> ret_type {
+    // loan 用于根事务归还连接
+    std::optional<impl::LoanType> &loan = impl::TxState<DB>::active_loan;
+    bool is_root = !loan.has_value();
+
+    constexpr auto tx_mode = std::is_same_v<Mode, core::Write>
+                                 ? core::TxMode::WRITE
+                                 : core::TxMode::READ;
+
+    if constexpr (std::is_same_v<Mode, core::Write>) {
+      if (!is_root && impl::TxState<DB>::active_mode == core::TxMode::READ) {
+        throw std::runtime_error(
+            get_cur_loc_info() +
+            ": Cannot nest write transaction inside read transaction");
+      }
     }
-  }
 
-  std::optional<core::Connection *> loan = std::nullopt;
-  if (is_root) {
-    loan.emplace(Context::instance().conn_pool().acquire().get());
-  } else {
-    loan = active;
-  }
+    if (is_root) {
+      impl::TxState<DB>::active_mode = tx_mode;
+      loan.emplace(Context::instance().conn_pool().acquire());
+    }
 
-  if (!loan.has_value()) {
-    throw std::runtime_error(get_cur_loc_info() + ": " +
-                             "Cannot get a connection for transaction");
-  }
-  core::Transaction<Mode, DB> tx(*(loan.value()));
+    if (!loan.has_value()) {
+      throw std::runtime_error(get_cur_loc_info() +
+                               ": Cannot get a connection for transaction");
+    }
 
-  tx.begin();
+    // 在最外层自动归还连接
+    struct RootGuard {
+      bool is_root;
+      std::optional<impl::LoanType> &loan_ref;
+      ~RootGuard() {
+        if (is_root) {
+          loan_ref.reset();
+        }
+      }
+    } root_guard{is_root, loan};
+
+    core::Transaction<Mode, DB> tx(*(loan.value().get()));
+
+    tx.begin();
+    try {
+      if constexpr (std::is_void_v<ret_type>) {
+        std::invoke(std::forward<Func>(func), tx);
+        tx.commit();
+        return;
+      } else {
+        auto result = std::invoke(std::forward<Func>(func), tx);
+        tx.commit();
+        return result;
+      }
+    } catch (...) {
+      int cur_level = tx.nesting_level();
+      tx.rollback();
+      if (cur_level > 1) {
+        throw cur_level;
+      }
+      throw;
+    }
+  };
+
   try {
-    using ret_type = std::invoke_result_t<Func, core::Transaction<Mode, DB> &>;
     if constexpr (std::is_void_v<ret_type>) {
-      std::invoke(std::forward<Func>(func), tx);
-      tx.commit();
-      return;
+      execute_tx();
     } else {
-      auto result = std::invoke(std::forward<Func>(func), tx);
-      tx.commit();
-      return result;
+      return execute_tx();
     }
-    // FIX: 当前实现并不完善
+  } catch (int level) {
+    // 捕获到 int，说明内层回滚，无需处理
+    // log
   } catch (...) {
-    tx.rollback();
-    /* TODO: 后续可通过在错误中添加对数据库类型的比较实现彻底的数据库事务隔离
-     *
-     *
-     * 当前的实现下，嵌套的数据库A的事务rollback后，抛出的错误会直接影响到外层的事务，会让外层随之rollback，后续可按照todo的更改
+    // 捕获到其他，说明是其他问题或是最外层，无需处理
     throw;
-     */
   }
 }
-
 } // namespace ess::orm

@@ -1,6 +1,6 @@
 #include <chrono>
 #include <concepts>
-#include <ess/orm/common_concept.hpp>
+#include <ess/orm/common/concept.hpp>
 #include <ess/orm/config/default.hpp>
 #include <ess/orm/core/dialect.hpp>
 
@@ -120,6 +120,11 @@ concept has_databases = requires { typename T::databases; };
 template <typename T>
 concept has_default_db = requires { typename T::default_db; };
 
+template <typename T>
+concept has_default_container_size = requires {
+  { T::default_container_size } -> std::convertible_to<std::size_t>;
+};
+
 template <typename T, typename Default> struct get_dialect_or {
   using type = Default;
 };
@@ -171,6 +176,23 @@ struct GlobalConfigTrait {
       detail::resolve_default_db<UserConfig,
                                  typename DefaultConfig::default_db>::type;
 
+  static constexpr std::size_t default_container_size = []() {
+    if constexpr (detail::has_default_container_size<UserConfig>) {
+      return UserConfig::default_container_size;
+    } else {
+      return DefaultConfig::default_container_size;
+    }
+  }();
+
+  // // default_container_size
+  // static constexpr std::size_t default_container_size = []() {
+  //   if constexpr (detail::has_default_container_size<UserDB>) {
+  //     return UserDB::default_container_size;
+  //   } else {
+  //     return DefaultDatabase::default_container_size;
+  //   }
+  // }();
+  //
   static_assert(
       database_count > 0,
       "At least one database required, add your "

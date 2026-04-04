@@ -2,7 +2,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
-#include <ess/orm/meta.hpp>
+#include <ess/orm/common/meta.hpp>
 #include <ess/orm/sql/token.hpp>
 
 namespace ess::orm::sql::ast {

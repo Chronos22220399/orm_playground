@@ -24,6 +24,8 @@ using dialect = Config::dialect;
 using databases = Config::databases;
 using default_db = Config::default_db;
 static constexpr std::size_t database_count = Config::database_count;
+static constexpr std::size_t default_container_size =
+    Config::default_container_size;
 
 static constexpr std::string get_dialect_string() {
   if constexpr (std::is_same_v<dialect, orm::dialect::Sqlite3>) {

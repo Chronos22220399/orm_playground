@@ -1,7 +1,7 @@
 #include "sqlite3_connection.h"
 #include "sqlite3_statement.h"
+#include <ess/orm/common/error.hpp>
 #include <ess/orm/core/connection.hpp>
-#include <ess/orm/error.hpp>
 #include <format>
 #include <sqlite3.h>
 

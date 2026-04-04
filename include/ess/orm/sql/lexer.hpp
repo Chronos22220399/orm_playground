@@ -1,6 +1,6 @@
 #pragma once
 #include <array>
-#include <ess/orm/meta.hpp>
+#include <ess/orm/common/meta.hpp>
 #include <ess/orm/sql/token.hpp>
 
 namespace ess::orm::sql {

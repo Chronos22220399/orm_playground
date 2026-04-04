@@ -465,4 +465,21 @@ static std::string join(const std::vector<std::string> &elements,
   }
   return result;
 }
+
+enum class ColumnType : std::uint8_t {
+  Unknown = 0, // 1. 无效或空值
+  Null,
+
+  Boolean,
+  Int64,
+
+  Float,
+
+  Text,
+  Blob,
+
+  DateTime, // 对应 TIMESTAMP / DATETIME
+  Date      // 对应 DATE
+};
+
 } // namespace ess::orm::meta

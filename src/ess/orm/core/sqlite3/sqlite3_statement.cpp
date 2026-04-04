@@ -1,5 +1,5 @@
 #include "sqlite3_statement.h"
-#include <ess/orm/error.hpp>
+#include <ess/orm/common/error.hpp>
 
 namespace ess::orm::core::sqlite3_impl {
 
@@ -74,6 +74,24 @@ std::string Sqlite3Statemnet::column_name(int index) const {
   assert(index >= 0 && index < column_count());
   return sqlite3_column_name(m_stmt.get(), index);
 };
+
+meta::ColumnType Sqlite3Statemnet::column_type(int index) const {
+  int type = sqlite3_column_type(m_stmt.get(), index);
+  switch (type) {
+  case SQLITE_INTEGER:
+    return meta::ColumnType::Int64;
+  case SQLITE_FLOAT:
+    return meta::ColumnType::Float;
+  case SQLITE_TEXT:
+    return meta::ColumnType::Text;
+  case SQLITE_BLOB:
+    return meta::ColumnType::Blob;
+  case SQLITE_NULL:
+    return meta::ColumnType::Null;
+  default:
+    return meta::ColumnType::Unknown;
+  }
+}
 
 void Sqlite3Statemnet::bind_one(int index, bool param) {
   if (sqlite3_bind_int(m_stmt.get(), index, param ? 1 : 0) != SQLITE_OK) {

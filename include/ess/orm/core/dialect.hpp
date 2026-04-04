@@ -1,5 +1,5 @@
 #pragma once
-#include <ess/orm/meta.hpp>
+#include <ess/orm/common/meta.hpp>
 
 namespace ess::orm::dialect {
 
