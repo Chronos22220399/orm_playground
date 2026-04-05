@@ -42,14 +42,14 @@ add_external_subproject("thirdparties/expected" "expected")
 file(GLOB_RECURSE ORM_SOURCES "src/ess/orm/*.cpp")
 
 # common
-add_executable(
-  ${exname} 
+add_library(
+  ess_orm 
   src/main.cpp
   ${ORM_SOURCES}
 )
 
 target_include_directories(
-  ${exname}
+  ess_orm
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/configs
@@ -57,7 +57,7 @@ target_include_directories(
 )
 
 target_link_libraries(
-  ${exname} 
+  ess_orm
   PRIVATE
   fmt::fmt
   SQLite3
@@ -65,7 +65,7 @@ target_link_libraries(
 )
 
 target_compile_options(
-  ${exname}
+  ess_orm
   PRIVATE
   -O3
   -g 
@@ -78,13 +78,13 @@ target_compile_options(
 )
 
 target_compile_definitions(
-  ${exname}
+  ess_orm
   PRIVATE
   ESS_ORM_EXPORTS
 )
 
 target_link_options(
-  ${exname}
+  ess_orm
   PRIVATE
   -fsanitize=address
   -fsanitize=undefined

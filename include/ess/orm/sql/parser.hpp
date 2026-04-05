@@ -1,17 +1,23 @@
 #pragma once
-#include <ess/orm/sql/ast/common.hpp>
+#include <ess/orm/sql/common.hpp>
 
 namespace ess::orm::sql {
 enum class SQLErrorKind : uint8_t {
   None,
   InvalidToken,
+  UnknownBeginning,
   ExpectedStarOrColumns,
   ExpectedFrom,
   ExpectedTableAfterFrom,
   ExpectedIdentifier,
   ExpectedIdentifierInWhereClause,
   ExpectedOperator,
-  ExpectedLiteral,
+  ExpectedLiteralOrPlaceHolder,
+  ExpectedRightParen,
+  ExpectedLeftParenAfterIn,
+  ExpectedLiteralInList,
+  ExpectedStringLiteralAfterLike,
+  ExpectedAndInBetweenClause,
   InvalidEnd,
   UnknownError,
 };
@@ -37,8 +43,8 @@ template <result_type auto R> consteval void check() {
       throw "SQL Error: Expected identifier in WHERE clause";
     else if constexpr (R.error == SQLErrorKind::ExpectedOperator)
       throw "SQL Error: Expected an operator after identifier";
-    else if constexpr (R.error == SQLErrorKind::ExpectedLiteral)
-      throw "SQL Error: Expected an literal in WHERE clause";
+    else if constexpr (R.error == SQLErrorKind::ExpectedLiteralOrPlaceHolder)
+      throw "SQL Error: Expected an literal or placeholder in WHERE clause";
     else if constexpr (R.error == SQLErrorKind::InvalidEnd)
       throw "SQL Error: Expected Where clause or end";
     else
@@ -115,12 +121,12 @@ public:
   }
 
   constexpr void parse_columns(ParseResult &result) {
-    bool first_vis = false;
+    bool first_vis = true;
     while (true) {
       if (peek().type == TokenType::Identifier) {
         if (first_vis) {
           result.column_start = peek().pos;
-          first_vis = true;
+          first_vis = false;
         }
         result.add_column(Column{.pos = peek().pos, .len = peek().len});
         advance();
@@ -152,36 +158,243 @@ public:
     }
   }
 
-  constexpr void parse_where_clause(ParseResult &result) {
+  // Parse: IN (SELECT ...) or IN (val1, val2, ...)
+  constexpr void parse_in_clause(ParseResult &result) {
+    advance(); // Consume 'IN'
+
+    if (peek().type != TokenType::Lparen) {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedLeftParenAfterIn;
+      return;
+    }
+    advance(); // Consume '('
+
+    if (peek().type == TokenType::Select) {
+      auto res = parse_select();
+      if (res.has_error) {
+        result.has_error = true;
+        result.error = res.error;
+        return;
+      }
+    } else {
+      // Parse hardcoded literal list: (1, 2, 'abc')
+      while (true) {
+        if (peek().type == TokenType::Number ||
+            peek().type == TokenType::String) {
+          advance();
+        } else {
+          result.has_error = true;
+          result.error = SQLErrorKind::ExpectedLiteralInList;
+          return;
+        }
+
+        if (peek().type == TokenType::Comma) {
+          advance();
+        } else {
+          break; // End of list
+        }
+      }
+    }
+
+    if (peek().type == TokenType::Rparen) {
+      advance();
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedRightParen;
+    }
+  }
+
+  // Parse: LIKE 'pattern'
+  constexpr void parse_like_clause(ParseResult &result) {
+    advance(); // Consume 'LIKE'
+
+    if (peek().type == TokenType::String) {
+      // TODO: You could validate the regex/wildcard pattern content here.
+      advance();
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedStringLiteralAfterLike;
+    }
+  }
+
+  // Parse: BETWEEN val1 AND val2
+  constexpr void parse_between_clause(ParseResult &result) {
+    advance(); // Consume 'BETWEEN'
+
+    // Match lower bound
+    if (peek().type == TokenType::String || peek().type == TokenType::Number ||
+        peek().type == TokenType::PlaceHolder) {
+      advance();
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedLiteralOrPlaceHolder;
+      return;
+    }
+
+    // Match the 'AND' keyword
+    if (peek().type == TokenType::And) {
+      advance();
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedAndInBetweenClause;
+      return;
+    }
+
+    // Match upper bound
+    if (peek().type == TokenType::String || peek().type == TokenType::Number ||
+        peek().type == TokenType::PlaceHolder) {
+      advance();
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedLiteralOrPlaceHolder;
+    }
+  }
+
+  // Parse: = , != , < , > , <= , >=
+  constexpr void parse_binary_operator_clause(ParseResult &result) {
+    advance(); // Consume operator
+
+    // The right-hand side can be a literal, a placeholder, or a subquery
+    if (peek().type == TokenType::String || peek().type == TokenType::Number ||
+        peek().type == TokenType::PlaceHolder) {
+      advance();
+    } else if (peek().type == TokenType::Lparen) {
+      advance(); // Consume '('
+
+      if (peek().type == TokenType::Select) {
+        auto res = parse_select();
+        if (res.has_error) {
+          result.has_error = true;
+          result.error = res.error;
+          return;
+        }
+      } else {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedStarOrColumns;
+        return;
+      }
+
+      if (peek().type == TokenType::Rparen) {
+        advance();
+      } else {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedRightParen;
+      }
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedLiteralOrPlaceHolder;
+    }
+  }
+
+  constexpr void parse_primary_expr(ParseResult &result) {
+    // 1. Handle parentheses (Either precedence grouping or subqueries)
+    if (peek().type == TokenType::Lparen) {
+      advance(); // Consume '('
+
+      // Case A: (SELECT ...) -> Standalone subquery in expression
+      if (peek().type == TokenType::Select) {
+        auto res = parse_select();
+        if (res.has_error) {
+          result.has_error = true;
+          result.error = res.error;
+          return;
+        }
+
+        if (peek().type == TokenType::Rparen) {
+          advance();
+        } else {
+          result.has_error = true;
+          result.error = SQLErrorKind::ExpectedRightParen;
+        }
+        return;
+      }
+
+      // Case B: (id > 10 AND ...) -> Normal precedence grouping
+      parse_where_clause(result);
+      if (result.has_error)
+        return;
+
+      if (peek().type == TokenType::Rparen) {
+        advance();
+      } else {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedRightParen;
+      }
+      return;
+    }
+
+    // 2. Match left-hand side operand (Must be a column identifier)
     if (peek().type != TokenType::Identifier) {
       result.has_error = true;
       result.error = SQLErrorKind::ExpectedIdentifierInWhereClause;
       return;
     }
+    advance(); // Consume Identifier
 
-    advance();
+    // 3. Dispatch to specific clause parsers based on the current lookahead
+    // token
+    switch (peek().type) {
+    case TokenType::In:
+      parse_in_clause(result);
+      break;
 
-    // match the operator
-    if (is_operator(peek().type)) {
-      advance();
-    } else {
-      result.has_error = true;
-      result.error = SQLErrorKind::ExpectedOperator;
-      return;
+    case TokenType::Like:
+      parse_like_clause(result);
+      break;
+
+    case TokenType::Between:
+      parse_between_clause(result);
+      break;
+
+    default:
+      // If it's none of the keywords above, it must be a normal comparison
+      // operator
+      if (is_operator(peek().type)) {
+        parse_binary_operator_clause(result);
+      } else {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedOperator;
+      }
+      break;
     }
+  }
 
-    // match the rhs: string or number
-    if (peek().type == TokenType::String || peek().type == TokenType::Number) {
-      advance();
-    } else {
-      result.has_error = true;
-      result.error = SQLErrorKind::ExpectedOperator;
+  constexpr void parse_and_expr(ParseResult &result) {
+    parse_primary_expr(result);
+    if (result.has_error)
       return;
+
+    while (peek().type == TokenType::And) {
+      advance();
+      parse_primary_expr(result);
+      if (result.has_error)
+        return;
+    }
+  }
+
+  constexpr void parse_where_clause(ParseResult &result) {
+    parse_and_expr(result);
+    if (result.has_error)
+      return;
+
+    // parse or
+    while (peek().type == TokenType::Or) {
+      advance();
+      parse_and_expr(result);
+      if (result.has_error)
+        return;
     }
   }
 
   constexpr ParseResult parse_select() {
     ParseResult result{};
+    if (peek().type == TokenType::Select) {
+      advance();
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::UnknownBeginning;
+      return result;
+    }
     // parse star or columns
     if (peek().type == TokenType::Star) {
       result.is_star = true;
@@ -211,7 +424,7 @@ public:
     if (peek().type == TokenType::Where) {
       advance();
       parse_where_clause(result);
-    } else if (at_end()) {
+    } else if (at_end() || peek().type == TokenType::Rparen) {
       return result;
     } else {
       result.has_error = true;
@@ -222,8 +435,7 @@ public:
   }
 
   [[nodiscard]] constexpr ParseResult parse() {
-    if (m_tokens[m_pos].type == TokenType::Select) {
-      m_pos++;
+    if (peek().type == TokenType::Select) {
       return parse_select();
     }
     return ParseResult::make_error();
