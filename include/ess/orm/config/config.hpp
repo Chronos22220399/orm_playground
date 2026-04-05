@@ -5,7 +5,7 @@
 
 namespace ess::orm::config {
 
-// 用户配置检测
+// 用户配置检测 - 用户通过 -I 指定配置目录后自动检测
 #if __has_include(<ess_orm_user_config.hpp>)
 #include <ess_orm_user_config.hpp>
 inline constexpr bool has_user_config = true;

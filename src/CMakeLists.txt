@@ -12,7 +12,6 @@ target_include_directories(
   ess_orm
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
-  ${CMAKE_CURRENT_SOURCE_DIR}/../configs
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -28,8 +27,6 @@ target_compile_options(
   -O3
   -g 
   -fno-omit-frame-pointer
-  -fsanitize=address
-  -fsanitize=undefined
 )
 
 target_compile_definitions(
@@ -42,8 +39,6 @@ target_compile_definitions(
 target_link_options(
   ess_orm
   PRIVATE
-  -fsanitize=address
-  -fsanitize=undefined
 )
 
 # 包含标准安装目录

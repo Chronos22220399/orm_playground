@@ -15,6 +15,8 @@
 
 ## 构建与安装
 
+> 库固定使用动态库 + 系统 SQLite3，无需额外配置。
+
 ### 基本构建
 
 ```bash
@@ -22,38 +24,14 @@
 git clone <repository-url>
 cd orm_playground
 
-git submodule update --init --recursive
-
-# 创建构建目录
-mkdir build && cd build
-
-# 配置（默认构建动态库，使用系统SQLite3）
-cmake ..
+# 创建构建目录并配置
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/your/custom/path
 
 # 构建
-make
+cmake --build build -j 4
 
-# 安装（需要sudo权限）
-sudo make install
-```
-
-### 构建选项
-
-| 选项                 | 默认值 | 说明                                        |
-| -------------------- | ------ | ------------------------------------------- |
-| `BUILD_SHARED_LIBS`  | `ON`   | 构建动态库 (`ON`) 或静态库 (`OFF`)          |
-| `USE_SYSTEM_SQLITE3` | `ON`   | 使用系统SQLite3库 (`ON`) 或捆绑版本 (`OFF`) |
-| `ENABLE_MYSQL`       | `OFF`  | 启用MySQL支持（占位符）                     |
-| `ENABLE_POSTGRES`    | `OFF`  | 启用PostgreSQL支持（占位符）                |
-
-示例：
-
-```bash
-# 构建静态库并使用捆绑SQLite3
-cmake -DBUILD_SHARED_LIBS=OFF -DUSE_SYSTEM_SQLITE3=OFF ..
-
-# 构建动态库并使用系统SQLite3
-cmake -DBUILD_SHARED_LIBS=ON -DUSE_SYSTEM_SQLITE3=ON ..
+# 安装
+cmake --install build
 ```
 
 ### 安装位置
@@ -61,7 +39,7 @@ cmake -DBUILD_SHARED_LIBS=ON -DUSE_SYSTEM_SQLITE3=ON ..
 默认安装到 `/usr/local/`：
 
 - 头文件：`/usr/local/include/ess/orm/`
-- 库文件：`/usr/local/lib/libess_orm.{a,dylib,so}`
+- 库文件：`/usr/local/lib/libess_orm.so`
 - CMake配置：`/usr/local/lib/cmake/ess_orm/`
 - pkg-config：`/usr/local/lib/pkgconfig/ess_orm.pc`
 
@@ -98,7 +76,119 @@ pkg-config --cflags --libs ess_orm
 
 ---
 
-## 目标
+## 快速开始
+
+### 1. 克隆与构建
+
+```bash
+# 克隆仓库
+git clone git@github.com:Chronos22220399/orm_playground.git
+cd orm_playground
+
+# 创建构建目录并配置
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/your/custom/path ..
+
+# 构建
+cmake --build . -j 4
+
+# 安装
+cmake --install .
+```
+
+### 2. 用户配置
+
+在你的项目目录中创建 `ess_orm_user_config.hpp`：
+
+```cpp
+// configs/ess_orm_user_config.hpp
+#pragma once
+#include <ess/orm/common/meta.hpp>
+#include <ess/orm/core/dialect.hpp>
+
+// 定义你的数据库
+struct MainDB {
+  static constexpr std::string_view connection_url = "./data/my.db";
+  static constexpr std::size_t pool_size = 10;
+};
+
+// 配置
+struct UserConfig {
+  using dialect = ess::orm::dialect::Sqlite3;
+  using databases = std::tuple<MainDB>;
+  using default_db = MainDB;
+};
+```
+
+### 3. 项目 CMake 配置
+
+```cmake
+cmake_minimum_required(VERSION 3.21)
+project(my_app LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+
+# 设置库路径
+set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/deps/ess_orm)
+find_package(ess_orm REQUIRED)
+
+add_executable(my_app main.cpp)
+
+# 关键：添加配置目录到 include 路径
+target_include_directories(my_app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/ess_orm/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/configs
+)
+
+target_link_libraries(my_app PRIVATE ess_orm)
+```
+
+### 4. 使用示例
+
+```cpp
+#include <ess/orm/orm.hpp>
+
+using namespace ess::orm;
+using namespace ess::orm::dsl;
+using namespace ess::orm::config;
+
+// 定义实体
+struct Goods {
+  long long id = 0;
+  std::string title;
+  float price = 0.0;
+  int stock = 0;
+
+  using Database = default_db;
+  using Schema = dsl::Schema<
+      "goods",
+      Field<"id", &Goods::id, PrimaryKey, AutoIncrement>,
+      Field<"title", &Goods::title>,
+      Field<"price", &Goods::price>,
+      Field<"stock", &Goods::stock>
+  >;
+};
+
+int main() {
+  // 注册数据库（必须）
+  Context::instance().register_db<MainDB>();
+
+  // 创建表
+  auto sql = Goods::Schema::make_create_table_ddl();
+  Context::instance().conn_pool().acquire()->execute_raw(sql, false);
+
+  // 查询
+  auto goods = ess::orm::query<"SELECT * FROM goods"_sql>();
+
+  return 0;
+}
+```
+
+### 5. 注意事项
+
+- 用户的配置文件通过 `-I` 路径在编译时检测，无需安装到系统
+- 必须手动调用 `Context::instance().register_db<YourDB>()` 注册数据库
+- 库本身不包含默认配置，配置完全由用户决定
 
 本项目在使用CPP生态下的一些库开发了几个项目的后端后想出，在曾经的开发过程中，经常面对 ddl 定义与代码难以同步更改、使用的orm库在处理复杂查询时难用或是需要手写sql、事务处理麻烦
 的情况，因此有了一下目标。

@@ -19,8 +19,12 @@ class ESS_ORM_API Context {
       m_pools = {};
   std::once_flag m_init_flag{};
 
-  Context() { init(); };
+  Context() {};
 
+public:
+  static Context &instance();
+
+  // 用户可以手动注册自己的数据库配置
   template <concepts::database_type DB> void register_db() {
     using trait = config::DatabaseTrait<DB, config::default_db_config>;
     auto pool = core::ConnectionPool<config::dialect>::create(
@@ -28,18 +32,13 @@ class ESS_ORM_API Context {
     m_pools[std::type_index(typeid(DB))] = std::move(pool);
   }
 
-public:
-  static Context &instance();
-
-  void init();
-
   template <concepts::database_type DB = config::default_db>
   core::ConnectionPool<config::dialect> &conn_pool() {
     auto it = m_pools.find(std::type_index(typeid(DB)));
     if (it == m_pools.end()) {
-      throw std::runtime_error("Database not registered. \n"
-                               "Call Context::instance().register_db<DB>() or\n"
-                               "Context::instance().init() first.");
+      throw std::runtime_error(
+          "Database not registered. \n"
+          "Call Context::instance().register_db<DB>() first.");
     }
     return *(it->second);
   }

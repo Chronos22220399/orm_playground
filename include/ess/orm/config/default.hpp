@@ -8,7 +8,7 @@ namespace inner_default {
 
 struct DefaultDB {
   // 必填
-  static constexpr std::string_view connection_url = "./data/test.db";
+  static constexpr std::string_view connection_url = "";
   // sqlite3 选填，mysql、postgres 必填
   static constexpr std::string_view password = "";
   // 选填
