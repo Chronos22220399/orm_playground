@@ -6,6 +6,7 @@
 #include <ess/orm/core/connection.hpp>
 #include <ess/orm/core/connection_pool.hpp>
 #include <ess/orm/core/statement.hpp>
+#include <mutex>
 #include <typeindex>
 #include <unordered_map>
 

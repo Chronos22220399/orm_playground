@@ -2,7 +2,7 @@
 #include <ess/orm/core/impl.hpp>
 #include <ess/orm/core/result.hpp>
 #include <ess/orm/core/transaction.hpp>
-
+#include <functional>
 #include <optional>
 
 namespace ess::orm {

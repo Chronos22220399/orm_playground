@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <condition_variable>
 #include <deque>
 #include <ess/orm/common/defines.hpp>
 #include <ess/orm/common/error.hpp>
