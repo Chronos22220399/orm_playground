@@ -22,6 +22,8 @@
 git clone <repository-url>
 cd orm_playground
 
+git submodule update --init --recursive
+
 # 创建构建目录
 mkdir build && cd build
 
@@ -37,14 +39,15 @@ sudo make install
 
 ### 构建选项
 
-| 选项 | 默认值 | 说明 |
-|------|--------|------|
-| `BUILD_SHARED_LIBS` | `ON` | 构建动态库 (`ON`) 或静态库 (`OFF`) |
-| `USE_SYSTEM_SQLITE3` | `ON` | 使用系统SQLite3库 (`ON`) 或捆绑版本 (`OFF`) |
-| `ENABLE_MYSQL` | `OFF` | 启用MySQL支持（占位符） |
-| `ENABLE_POSTGRES` | `OFF` | 启用PostgreSQL支持（占位符） |
+| 选项                 | 默认值 | 说明                                        |
+| -------------------- | ------ | ------------------------------------------- |
+| `BUILD_SHARED_LIBS`  | `ON`   | 构建动态库 (`ON`) 或静态库 (`OFF`)          |
+| `USE_SYSTEM_SQLITE3` | `ON`   | 使用系统SQLite3库 (`ON`) 或捆绑版本 (`OFF`) |
+| `ENABLE_MYSQL`       | `OFF`  | 启用MySQL支持（占位符）                     |
+| `ENABLE_POSTGRES`    | `OFF`  | 启用PostgreSQL支持（占位符）                |
 
 示例：
+
 ```bash
 # 构建静态库并使用捆绑SQLite3
 cmake -DBUILD_SHARED_LIBS=OFF -DUSE_SYSTEM_SQLITE3=OFF ..
@@ -56,6 +59,7 @@ cmake -DBUILD_SHARED_LIBS=ON -DUSE_SYSTEM_SQLITE3=ON ..
 ### 安装位置
 
 默认安装到 `/usr/local/`：
+
 - 头文件：`/usr/local/include/ess/orm/`
 - 库文件：`/usr/local/lib/libess_orm.{a,dylib,so}`
 - CMake配置：`/usr/local/lib/cmake/ess_orm/`
@@ -64,17 +68,20 @@ cmake -DBUILD_SHARED_LIBS=ON -DUSE_SYSTEM_SQLITE3=ON ..
 ### 在项目中使用
 
 #### CMake
+
 ```cmake
 find_package(ess_orm REQUIRED)
 target_link_libraries(your_target PRIVATE ess::orm)
 ```
 
 #### pkg-config
+
 ```bash
 pkg-config --cflags --libs ess_orm
 ```
 
 #### 直接包含
+
 ```cpp
 #include <ess/orm/orm.hpp>  // 主包含文件
 // 或单独包含需要的头文件
@@ -84,6 +91,7 @@ pkg-config --cflags --libs ess_orm
 ### 版本信息
 
 当前版本：`0.0.1` (实验性)
+
 - 库名称：`ess_orm`
 - 命名空间：`ess::orm`
 - 最低C++标准：`C++20`
