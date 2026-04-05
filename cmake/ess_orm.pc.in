@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: ess_orm
+Description: ESS ORM Library - A lightweight C++20 ORM library
+Version: @PROJECT_VERSION@
+Requires: 
+Libs: -L${libdir} -less_orm
+Cflags: -I${includedir}

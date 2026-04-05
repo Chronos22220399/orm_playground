@@ -1,7 +1,7 @@
 #pragma once
 #include <ess/orm/common/concept.hpp>
 #include <ess/orm/common/meta.hpp>
-#include <fmt/format.h>
+#include <ess/orm/internal/string_utils.hpp>
 
 namespace ess::orm::attribute {
 
@@ -228,17 +228,17 @@ template <typename Attr> std::string to_sql_fragment(Attr) {
     using ValueType = std::remove_cvref_t<decltype(T::value)>;
 
     if constexpr (concepts::floating_point_wrapper<ValueType>) {
-      return fmt::format("{} {}", Trait::attr_str,
-                         static_cast<int>(T::value.value));
+      return internal::concat(Trait::attr_str, " ",
+                              static_cast<int>(T::value.value));
     } else if constexpr (std::is_enum_v<ValueType>) {
       // 默认将 enum 转换为 int
-      return fmt::format("{} {}", Trait::attr_str, static_cast<int>(T::value));
+      return internal::concat(Trait::attr_str, " ", static_cast<int>(T::value));
     } else {
-      return fmt::format("{} {}", Trait::attr_str, T::value);
+      return internal::concat(Trait::attr_str, " ", T::value);
     }
   } else if constexpr (requires { T::expr; }) {
     using Trait = attr_traits<T, T::expr>;
-    return fmt::format("{} {}", Trait::attr_str, T::expr);
+    return internal::concat(Trait::attr_str, " ", T::expr);
   }
   return "";
 }

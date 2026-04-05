@@ -3,7 +3,6 @@
 #include <ess/orm/common/meta.hpp>
 #include <ess/orm/dsl/attribute.hpp>
 #include <ess/orm/dsl/traits.hpp>
-#include <fmt/ranges.h>
 
 namespace ess::orm::dsl {
 template <meta::FixedString ColumnName, // column name
@@ -123,9 +122,13 @@ public:
     // 预留字段
     col_defs.reserve(sizeof...(Fields));
     (col_defs.push_back(make_col_def<Fields>()), ...);
-    return fmt::format(
-        "CREATE TABLE {}{} ({});", (not_replace ? "IF NOT EXISTS " : ""),
-        std::string_view(table_name), meta::join(col_defs, ",\n"));
+    std::string result = "CREATE TABLE ";
+    result += (not_replace ? "IF NOT EXISTS " : "");
+    result += std::string_view(table_name);
+    result += " (";
+    result += meta::join(col_defs, ",\n");
+    result += ");";
+    return result;
   }
 
 private:

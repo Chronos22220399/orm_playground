@@ -1,3 +1,5 @@
+#pragma once
+
 #include <chrono>
 #include <concepts>
 #include <ess/orm/common/concept.hpp>

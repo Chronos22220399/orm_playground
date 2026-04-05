@@ -1,0 +1,45 @@
+@PACKAGE_INIT@
+
+# 包含 CMake 查找依赖模块
+include(CMakeFindDependencyMacro)
+
+# 查找依赖项（如果用户项目需要）
+# 注意：ess_orm 已静态链接这些库，用户通常不需要单独链接
+# find_dependency(fmt)
+# find_dependency(SQLite3)
+# find_dependency(TlExpected)  # 如果 tl::expected 有 CMake 配置
+
+# 包含生成的导出文件
+include("${CMAKE_CURRENT_LIST_DIR}/ess_ormTargets.cmake")
+
+# 检查目标存在性并创建命名空间别名
+if(NOT TARGET ess::orm)
+  if(TARGET ess_orm)
+    add_library(ess::orm ALIAS ess_orm)
+  else()
+    message(WARNING "Target ess_orm not found in imported targets")
+  endif()
+endif()
+
+# 计算相对路径（用于头文件包含）
+get_filename_component(_ess_orm_include_dir "${CMAKE_CURRENT_LIST_DIR}/../@CMAKE_INSTALL_INCLUDEDIR@" ABSOLUTE)
+
+# 提供 find_package 后的变量
+set(ESS_ORM_FOUND TRUE)
+set(ESS_ORM_INCLUDE_DIRS "${_ess_orm_include_dir}")
+set(ESS_ORM_LIBRARIES ess::orm)
+
+# 版本检查
+set(ESS_ORM_VERSION @PROJECT_VERSION@)
+set(ESS_ORM_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
+set(ESS_ORM_VERSION_MINOR @PROJECT_VERSION_MINOR@)
+set(ESS_ORM_VERSION_PATCH @PROJECT_VERSION_PATCH@)
+
+# 向后兼容性
+set(ess_orm_FOUND ${ESS_ORM_FOUND})
+set(ess_orm_INCLUDE_DIRS ${ESS_ORM_INCLUDE_DIRS})
+set(ess_orm_LIBRARIES ${ESS_ORM_LIBRARIES})
+set(ess_orm_VERSION ${ESS_ORM_VERSION})
+
+# 记录消息
+message(STATUS "Found ess_orm ${ESS_ORM_VERSION}")

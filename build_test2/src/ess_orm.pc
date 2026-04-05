@@ -1,0 +1,11 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: ess_orm
+Description: ESS ORM Library - A lightweight C++20 ORM library
+Version: 0.0.1
+Requires: 
+Libs: -L${libdir} -less_orm
+Cflags: -I${includedir}

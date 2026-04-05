@@ -11,6 +11,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# 构建类型选项
+option(BUILD_SHARED_LIBS "Build ess_orm as shared library (dynamic)" ON)
+option(USE_SYSTEM_SQLITE3 "Use system SQLite3 library (instead of bundled)" ON)
+option(ENABLE_MYSQL "Enable MySQL database support (placeholder)" OFF)
+option(ENABLE_POSTGRES "Enable PostgreSQL database support (placeholder)" OFF)
+
 
 message(STATUS "=== C++ Compiler Info ===")
 message(STATUS "CXX Compiler Path: ${CMAKE_CXX_COMPILER}")
@@ -36,118 +42,48 @@ function(add_external_subproject lib_folder target_name)
 endfunction()
 
 add_external_subproject("thirdparties/fmt" "fmt")
-add_external_subproject("thirdparties/sqlite3" "SQLite3")
+
+if(USE_SYSTEM_SQLITE3)
+    find_package(SQLite3 REQUIRED)
+    if(NOT TARGET SQLite3::SQLite3)
+        # Create imported target if not provided by FindSQLite3
+        add_library(SQLite3::SQLite3 INTERFACE IMPORTED)
+        set_target_properties(SQLite3::SQLite3 PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${SQLite3_INCLUDE_DIRS}"
+            INTERFACE_LINK_LIBRARIES "${SQLite3_LIBRARIES}"
+        )
+    endif()
+    set(SQLITE3_TARGET SQLite3::SQLite3)
+    message(STATUS "Using system SQLite3: ${SQLite3_VERSION}")
+else()
+    add_external_subproject("thirdparties/sqlite3" "SQLite3")
+    set(SQLITE3_TARGET SQLite3)
+    message(STATUS "Using bundled SQLite3")
+endif()
+
+# MySQL 占位支持
+if(ENABLE_MYSQL)
+    message(STATUS "MySQL support enabled (placeholder)")
+    # 未来添加: find_package(MySQL REQUIRED)
+    # 未来添加: set(MYSQL_TARGET ...)
+endif()
+
+# PostgreSQL 占位支持
+if(ENABLE_POSTGRES)
+    message(STATUS "PostgreSQL support enabled (placeholder)")
+    # 未来添加: find_package(PostgreSQL REQUIRED)
+    # 未来添加: set(POSTGRES_TARGET ...)
+endif()
+
 add_external_subproject("thirdparties/expected" "expected")
 
-file(GLOB_RECURSE ORM_SOURCES "src/ess/orm/*.cpp")
+# 构建库
+add_subdirectory(src)
 
-# common
-add_library(
-  ess_orm 
-  src/main.cpp
-  ${ORM_SOURCES}
-)
+# Examples
 
-target_include_directories(
-  ess_orm
-  PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/configs
-  ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
 
-target_link_libraries(
-  ess_orm
-  PRIVATE
-  fmt::fmt
-  SQLite3
-  tl::expected
-)
-
-target_compile_options(
-  ess_orm
-  PRIVATE
-  -O3
-  -g 
-  -fno-omit-frame-pointer
-  -fsanitize=address
-  -fsanitize=undefined
-  # -fexceptions
-  # -save-temps=obj
-  # -Rpass=inline
-)
-
-target_compile_definitions(
-  ess_orm
-  PRIVATE
-  ESS_ORM_EXPORTS
-)
-
-target_link_options(
-  ess_orm
-  PRIVATE
-  -fsanitize=address
-  -fsanitize=undefined
-)
-
+# Examples
+add_subdirectory(examples)
 
 option(BUILD_BENCHMARKS "Build benchmarks" OFF)
-#
-# if(BUILD_BENCHMARKS)
-#     add_subdirectory(bench)
-# endif()
-
-# target_precompile_headers(
-#   ${exname}
-#   PRIVATE
-#   include/std.hpp
-#   include/core_thirdparties.hpp
-#   include/core.hpp
-# )
-
-# tests
-# enable_testing()
-# add_executable(
-#   orm_tests
-#   tests/test_main.cpp
-#   tests/test_schema.cpp
-# )
-#
-# target_include_directories(
-#   orm_tests
-#   PRIVATE
-#   ${CMAKE_CURRENT_SOURCE_DIR}/include
-# )
-#
-# target_link_libraries(
-#   orm_tests
-#   PRIVATE
-#   doctest::doctest
-#   fmt::fmt
-# )
-#
-# target_compile_options(
-#   orm_tests
-#   PRIVATE
-#   -O0
-#   -g
-#   -fsanitize=address
-#   # -save-temps=obj
-#   # -Rpass=inline
-# )
-#
-# target_link_options(
-#   orm_tests
-#   PRIVATE
-#   -fsanitize=address
-# )
-#
-# target_precompile_headers(
-#   orm_tests
-#   PRIVATE
-#   include/std.hpp
-#   include/core_thirdparties.hpp
-#   include/core.hpp
-# )
-#
-# add_test(NAME orm_tests COMMAND orm_tests)

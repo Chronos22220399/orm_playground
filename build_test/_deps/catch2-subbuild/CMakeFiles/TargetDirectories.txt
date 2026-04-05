@@ -1,0 +1,3 @@
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/CMakeFiles/catch2-populate.dir
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/CMakeFiles/edit_cache.dir
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/CMakeFiles/rebuild_cache.dir

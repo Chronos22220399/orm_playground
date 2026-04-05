@@ -1,7 +1,7 @@
 #pragma once
 #include <ess/orm/config/traits.hpp>
 #include <ess/orm/core/dialect.hpp>
-#include <fmt/color.h>
+#include <iostream>
 
 namespace ess::orm::config {
 
@@ -38,12 +38,10 @@ static constexpr std::string get_dialect_string() {
 }
 
 static void print_config() {
-  fmt::print(fmt::fg(fmt::color::cyan),
-             "\n[Ess ORM Configuration]\n"
-             "  {:<18} {}\n"
-             "  {:<18} {}\n",
-             "User config:", has_user_config ? "detected" : "not detected",
-             "Dialect:", get_dialect_string());
+  std::cout << "\n[Ess ORM Configuration]\n"
+            << "  User config:       "
+            << (has_user_config ? "detected" : "not detected") << "\n"
+            << "  Dialect:           " << get_dialect_string() << "\n";
 }
 
 } // namespace ess::orm::config

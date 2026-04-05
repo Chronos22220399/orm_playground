@@ -1,0 +1,14 @@
+# Target labels
+ catch2-populate
+# Source files and their labels
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/CMakeFiles/catch2-populate
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/CMakeFiles/catch2-populate.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/CMakeFiles/catch2-populate-complete.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/catch2-populate-prefix/src/catch2-populate-stamp/catch2-populate-build.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/catch2-populate-prefix/src/catch2-populate-stamp/catch2-populate-configure.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/catch2-populate-prefix/src/catch2-populate-stamp/catch2-populate-download.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/catch2-populate-prefix/src/catch2-populate-stamp/catch2-populate-install.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/catch2-populate-prefix/src/catch2-populate-stamp/catch2-populate-mkdir.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/catch2-populate-prefix/src/catch2-populate-stamp/catch2-populate-patch.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/catch2-populate-prefix/src/catch2-populate-stamp/catch2-populate-test.rule
+/Users/wuming/code/orm_playground/build_test/_deps/catch2-subbuild/catch2-populate-prefix/src/catch2-populate-stamp/catch2-populate-update.rule
