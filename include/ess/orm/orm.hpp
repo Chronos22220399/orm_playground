@@ -43,5 +43,8 @@
 // Version information
 #include <ess/orm/version.hpp>
 
+// Third-party dependencies (embedded)
+#include <ess/orm/thirdparty/expected.hpp>
+
 // Note: Internal headers are not included as they are not part of public API
 // Note: Test headers are not included as they are for testing only

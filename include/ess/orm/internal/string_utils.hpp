@@ -46,7 +46,6 @@ template <typename... Args> std::string concat(Args &&...args) {
 }
 
 // 简化版格式化：只支持简单替换，不支持格式说明符
-// 用于替换 fmt::format 的基本使用场景
 template <typename... Args>
 std::string simple_format(std::string_view fmt, Args &&...args) {
   // 非常简单的实现：只进行字符串拼接，不处理占位符

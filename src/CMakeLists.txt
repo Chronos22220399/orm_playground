@@ -19,9 +19,7 @@ target_include_directories(
 target_link_libraries(
   ess_orm
   PRIVATE
-  fmt::fmt
   ${SQLITE3_TARGET}
-  tl::expected
 )
 
 target_compile_options(

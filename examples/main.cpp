@@ -19,7 +19,7 @@ struct Goods {
   bool enabled = true;
 
   using Database = default_db;
-  using Schema = Schema<
+  using Schema = dsl::Schema<
       "goods", //
       Field<"id", &Goods::id, PrimaryKey, AutoIncrement>,
       Field<"title", &Goods::title, DefaultValue<"untitled"_fs>>,

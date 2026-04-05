@@ -19,6 +19,7 @@
 // #include <ess/orm/test/stress_test.hpp>
 // #include <sqlite3.h>
 
+using namespace ess::orm;
 using namespace ess::orm::config;
 using namespace ess::orm::meta;
 using namespace ess::orm::dsl;
@@ -41,7 +42,7 @@ struct Goods {
   bool enabled = true;
 
   using Database = default_db;
-  using Schema = Schema<
+  using Schema = dsl::Schema<
       "goods", //
       Field<"id", &Goods::id, PrimaryKey, AutoIncrement>,
       Field<"title", &Goods::title, DefaultValue<"untitled"_fs>>,

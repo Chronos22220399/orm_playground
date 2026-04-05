@@ -28,20 +28,12 @@ function(add_external_subproject lib_folder target_name)
   if(EXISTS "${lib_full_path}/CMakeLists.txt")
     message(STATUS "[ORM] Configuring external library: ${target_name}")
 
-    # 特别配置 fmt
-    if ("${target_name}" MATCHES "fmt")
-      set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
-      set(FMT_TEST OFF CACHE BOOL "" FORCE)
-    endif()
-    
     add_subdirectory(${lib_full_path})
 
   else()
     message(FATAL_ERROR "[ORM] Library not found in ${lib_full_path}")
   endif()
 endfunction()
-
-add_external_subproject("thirdparties/fmt" "fmt")
 
 if(USE_SYSTEM_SQLITE3)
     find_package(SQLite3 REQUIRED)
@@ -74,8 +66,6 @@ if(ENABLE_POSTGRES)
     # 未来添加: find_package(PostgreSQL REQUIRED)
     # 未来添加: set(POSTGRES_TARGET ...)
 endif()
-
-add_external_subproject("thirdparties/expected" "expected")
 
 # 构建库
 add_subdirectory(src)

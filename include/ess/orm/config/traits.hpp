@@ -176,7 +176,7 @@ struct GlobalConfigTrait {
 
   using default_db =
       detail::resolve_default_db<UserConfig,
-                                 typename DefaultConfig::default_db>::type;
+                                 typename DefaultConfig::databases>::type;
 
   static constexpr std::size_t default_container_size = []() {
     if constexpr (detail::has_default_container_size<UserConfig>) {
