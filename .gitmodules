@@ -1,9 +1,0 @@
-[submodule "thirdparties/fmt"]
-	path = thirdparties/fmt
-	url = https://github.com/fmtlib/fmt.git
-[submodule "thirdparties/sqlite3"]
-	path = thirdparties/sqlite3
-	url = https://github.com/azadkuh/sqlite-amalgamation.git
-[submodule "thirdparties/expected"]
-	path = thirdparties/expected
-	url = https://github.com/TartanLlama/expected.git

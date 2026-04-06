@@ -24,6 +24,13 @@ class ESS_ORM_API Context {
 public:
   static Context &instance();
 
+  void init() {
+    using dbs = config::databases;
+    [&]<std::size_t... I>(std::index_sequence<I...>) {
+      (register_db<std::tuple_element_t<I, dbs>>(), ...);
+    }(std::make_index_sequence<std::tuple_size_v<dbs>>{});
+  }
+
   // 用户可以手动注册自己的数据库配置
   template <concepts::database_type DB> void register_db() {
     using trait = config::DatabaseTrait<DB, config::default_db_config>;

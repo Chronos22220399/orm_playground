@@ -62,7 +62,8 @@ int main() {
   using namespace ess::orm::sql;
   using namespace ess::orm::core;
 
-  Context::instance().register_db<default_db>();
+  Context::instance().init();
+  // Context::instance().register_db<default_db>();
 
   auto goods = ess::orm::query<Goods, //
                                "SELECT * FROM goods WHERE id IN"

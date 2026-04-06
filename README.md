@@ -116,7 +116,7 @@ struct MainDB {
 struct UserConfig {
   using dialect = ess::orm::dialect::Sqlite3;
   using databases = std::tuple<MainDB>;
-  using default_db = MainDB;
+  using default_db = MainDB; // 默认使用 databases 内的第一个数据库
 };
 ```
 
@@ -149,8 +149,10 @@ target_link_libraries(my_app PRIVATE ess_orm)
 #include <ess/orm/orm.hpp>
 
 using namespace ess::orm;
+using namespace ess::orm::sql;
 using namespace ess::orm::dsl;
 using namespace ess::orm::config;
+using namespace ess::orm::attribute;
 
 // 定义实体
 struct Goods {
@@ -171,6 +173,7 @@ struct Goods {
 
 int main() {
   // 注册数据库（必须）
+  // 后续会将这里直接用 instance().init() 统一自动处理
   Context::instance().register_db<MainDB>();
 
   // 创建表
@@ -182,6 +185,15 @@ int main() {
 
   return 0;
 }
+```
+
+### 5. 编译运行
+
+```shell
+cmake -B build
+cmake --build build -j 4
+
+./build/my_app
 ```
 
 ### 5. 注意事项

@@ -425,7 +425,7 @@ using cpp_type_to_sql_semantic_t = cpp_type_to_sql_semantic<T>::type;
 template <typename> struct sql_semantic_to_type_str {};
 
 template <> struct sql_semantic_to_type_str<sql_integer> {
-  static constexpr auto type_str = "INT"_fs;
+  static constexpr auto type_str = "INTEGER"_fs;
 };
 
 template <> struct sql_semantic_to_type_str<sql_floating> {

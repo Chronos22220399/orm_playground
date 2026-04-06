@@ -1,11 +1,5 @@
 #!/bin/zsh
-#
-## ===== 自动初始化第三方库 =====
-if [ ! -d "thirdparties/fmt" ]; then
-    echo "📦 正在拉取 fmt 库..."
-    mkdir -p thirdparties
-    git clone --depth 1 https://github.com/fmtlib/fmt.git thirdparties/fmt
-fi
+
 # ===== 配置 =====
 BUILD_DIR="build"
 CPPINSIGHTS="/opt/homebrew/Cellar/cppinsights/20.1_1/bin/insights"
@@ -74,7 +68,6 @@ cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
       -DCMAKE_CXX_STANDARD=20 \
       -DCMAKE_CXX_STANDARD_REQUIRED=ON \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-      -DBUILD_BENCHMARKS=ON \
       -B ${BUILD_DIR}
 cmake --build ${BUILD_DIR} -j 4
 if [[ $? -ne 0 ]]; then
@@ -85,6 +78,6 @@ fi
 # 运行两个示例
 echo "🚀 运行 orm_example..."
 ./${BUILD_DIR}/examples/orm_example
-echo ""
-echo "🚀 运行 schema_example..."
-./${BUILD_DIR}/examples/schema_example
+# echo ""
+# echo "🚀 运行 schema_example..."
+# ./${BUILD_DIR}/examples/schema_example
