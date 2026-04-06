@@ -1,11 +1,12 @@
 #pragma once
 #include <array>
+#include <cstdint>
 #include <string_view>
 
 namespace ess::orm::sql {
 // ========== token 类型 =============
 // clang-format off
-enum class TokenType : uint8_t {
+enum class TokenType : std::uint8_t {
   // keywords
   Select, Insert, Update, Delete,
   From, Into, Values,
