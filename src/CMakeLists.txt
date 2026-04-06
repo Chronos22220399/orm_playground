@@ -40,6 +40,7 @@ target_link_options(
 )
 
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 install(TARGETS ess_orm
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -52,7 +53,13 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../include/ess/orm
   FILES_MATCHING PATTERN "*.hpp"
 )
 
-include(CMakePackageConfigHelpers)
+if(APPLE)
+  set(ESS_ORM_LIB_SUFFIX ".dylib")
+elseif(WIN32)
+  set(ESS_ORM_LIB_SUFFIX ".dll")
+else()
+  set(ESS_ORM_LIB_SUFFIX ".so")
+endif()
 
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ess_orm)
 
@@ -67,8 +74,8 @@ set(ESS_ORM_FOUND TRUE)
 set(ESS_ORM_VERSION \"${PROJECT_VERSION}\")
 get_filename_component(ESS_ORM_CONFIG_DIR \"\${CMAKE_CURRENT_LIST_DIR}\" ABSOLUTE)
 set(ESS_ORM_INCLUDE_DIRS \"\${ESS_ORM_CONFIG_DIR}/../../../include\")
-if(EXISTS \"\${ESS_ORM_CONFIG_DIR}/../../libess_orm.so\")
-  set(ESS_ORM_LIBRARY \"\${ESS_ORM_CONFIG_DIR}/../../libess_orm.so\")
+if(EXISTS \"\${ESS_ORM_CONFIG_DIR}/../../libess_orm${ESS_ORM_LIB_SUFFIX}\")
+  set(ESS_ORM_LIBRARY \"\${ESS_ORM_CONFIG_DIR}/../../libess_orm${ESS_ORM_LIB_SUFFIX}\")
 else()
   set(ESS_ORM_LIBRARY \"\${ESS_ORM_CONFIG_DIR}/../../libess_orm.a\")
 endif()
