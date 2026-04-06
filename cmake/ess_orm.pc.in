@@ -7,5 +7,5 @@ Name: ess_orm
 Description: ESS ORM Library - A lightweight C++20 ORM library
 Version: @PROJECT_VERSION@
 Requires: 
-Libs: -L${libdir} -less_orm
+Libs: -L${libdir} -ess_orm
 Cflags: -I${includedir}

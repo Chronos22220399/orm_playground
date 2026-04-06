@@ -21,17 +21,18 @@
 
 ```bash
 # 克隆仓库
-git clone <repository-url>
+git clone git@github.com:Chronos22220399/orm_playground.git
 cd orm_playground
 
 # 创建构建目录并配置
-cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/your/custom/path
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/your/custom/path ..
 
 # 构建
-cmake --build build -j 4
+cmake --build . -j 4
 
 # 安装
-cmake --install build
+cmake --install .
 ```
 
 ### 安装位置
@@ -129,25 +130,27 @@ project(my_app LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 # 设置库路径
-set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/deps/ess_orm)
+set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/install)
 find_package(ess_orm REQUIRED)
 
 add_executable(my_app main.cpp)
 
 # 关键：添加配置目录到 include 路径
 target_include_directories(my_app PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/ess_orm/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/install/include
     ${CMAKE_CURRENT_SOURCE_DIR}/configs
 )
 
-target_link_libraries(my_app PRIVATE ess_orm)
+target_link_libraries(my_app PRIVATE ess::orm)
 ```
 
 ### 4. 使用示例
 
 ```cpp
 #include <ess/orm/orm.hpp>
+#include <iostream>
 
+using namespace std;
 using namespace ess::orm;
 using namespace ess::orm::sql;
 using namespace ess::orm::dsl;
@@ -162,26 +165,43 @@ struct Goods {
   int stock = 0;
 
   using Database = default_db;
-  using Schema = dsl::Schema<
-      "goods",
-      Field<"id", &Goods::id, PrimaryKey, AutoIncrement>,
-      Field<"title", &Goods::title>,
-      Field<"price", &Goods::price>,
-      Field<"stock", &Goods::stock>
-  >;
+  using Schema = dsl::Schema<                             //
+      "goods",                                            //
+      Field<"id", &Goods::id, PrimaryKey, AutoIncrement>, //
+      Field<"title", &Goods::title>,                      //
+      Field<"price", &Goods::price>,                      //
+      Field<"stock", &Goods::stock>                       //
+      >;
 };
 
 int main() {
   // 注册数据库（必须）
   // 后续会将这里直接用 instance().init() 统一自动处理
-  Context::instance().register_db<MainDB>();
+  Context::instance().init();
 
   // 创建表
   auto sql = Goods::Schema::make_create_table_ddl();
-  Context::instance().conn_pool().acquire()->execute_raw(sql, false);
+  Context::instance().conn_pool().acquire()->execute_raw(sql);
 
+  auto count = ess::orm::query<"SELECT * FROM goods">().size();
+
+  if (count > 0)
+    goto k;
+
+  for (int i = 0; i < 10; ++i) {
+    ess::orm::query<"INSERT INTO goods VALUES (?, ?, ?, ?)">(
+        i, "number_" + std::to_string(i), i * 10.0, 0);
+  }
+
+k:
   // 查询
-  auto goods = ess::orm::query<"SELECT * FROM goods"_sql>();
+  auto goods = ess::orm::query<Goods, "SELECT * FROM goods"_sql>();
+  cout << goods.size() << endl;
+
+  for (auto &g : goods) {
+    cout << "id: " << g.id << "\t" << "title: " << g.title << "\t"
+         << "price: " << g.price << "\t" << "stock: " << g.stock << endl;
+  }
 
   return 0;
 }
