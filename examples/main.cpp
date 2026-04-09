@@ -1,8 +1,8 @@
-#include <cstring>
 #include <ess/orm/orm.hpp>
 
 using namespace std;
 using namespace ess::orm;
+using namespace ess::orm::sql;
 using namespace ess::orm::meta;
 using namespace ess::orm::core;
 using namespace ess::orm::config;
@@ -30,45 +30,20 @@ struct Goods {
       >;
 };
 
-void test_default_no_cascade() {
-  using namespace ess::orm::sql;
-
-  ess::orm::transaction([](auto &outer_tx) {
-    std::cout << "--- 外层事务开始 ---" << std::endl;
-
-    auto rows = outer_tx.template query< //
-        "SELECT * FROM goods WHERE id IN"
-        "(SELECT id FROM goods WHERE id > ?)"_sql //
-        >(0);
-
-    std::cout << "外层查到商品数量: " << rows.size() << std::endl;
-
-    ess::orm::transaction([](auto &inner_tx) {
-      std::cout << "  --- 内层事务开始 ---" << std::endl;
-      std::cout << "  内层发生灾难，准备抛出异常..." << std::endl;
-      auto res = inner_tx.template query<"DELETE FROM goods WHERE id = 1">();
-      throw std::runtime_error("内层业务逻辑失败！");
-      std::cout << "  --- 内层事务结束（这行不会被执行） ---" << std::endl;
-    });
-
-    rows = outer_tx.template query<"SELECT * FROM goods">();
-    std::cout << "查到商品数量: " << rows.size() << std::endl;
-    std::cout << "外层后续业务...（因为内层报错，这行也不会被执行）"
-              << std::endl;
-  });
-}
+void test_default_no_cascade();
 
 int main() {
-  using namespace ess::orm::sql;
-  using namespace ess::orm::core;
 
   Context::instance().init();
   // Context::instance().register_db<default_db>();
 
-  auto goods = ess::orm::query<Goods, //
-                               "SELECT * FROM goods WHERE id IN"
-                               "(SELECT id FROM goods WHERE id > ?)"_sql //
-                               >(0);
+  auto goods = query<Goods, //
+                     "SELECT ALL * FROM goods WHERE id IN "
+                     "(SELECT DISTINCT id FROM goods WHERE (COUNT(id) > ? AND "
+                     "id IS NOT NULL) AND id NOT LIKE '_id') "
+                     "GROUP BY id, name HAVING COUNT(id) > 0"
+                     "ORDER BY id ASC, name DESC"_sql //
+                     >(0, 1);
 
   std::cout << "商品数量: " << goods.size() << std::endl;
   std::cout << "商品信息: " << std::endl;
@@ -96,4 +71,32 @@ int main() {
   // auto rows = ess::orm::query<Goods, "SELECT * FROM goods WHERE id > 0",
   //                             std::deque, ContainerSize<1000>>();
   return 0;
+}
+
+void test_default_no_cascade() {
+  using namespace ess::orm::sql;
+
+  ess::orm::transaction([](auto &outer_tx) {
+    std::cout << "--- 外层事务开始 ---" << std::endl;
+
+    auto rows = outer_tx.template query< //
+        "SELECT * FROM goods WHERE id IN"
+        "(SELECT id FROM goods WHERE id > ?)"_sql //
+        >(0);
+
+    std::cout << "外层查到商品数量: " << rows.size() << std::endl;
+
+    ess::orm::transaction([](auto &inner_tx) {
+      std::cout << "  --- 内层事务开始 ---" << std::endl;
+      std::cout << "  内层发生灾难，准备抛出异常..." << std::endl;
+      auto res = inner_tx.template query<"DELETE FROM goods WHERE id = 1">();
+      throw std::runtime_error("内层业务逻辑失败！");
+      std::cout << "  --- 内层事务结束（这行不会被执行） ---" << std::endl;
+    });
+
+    rows = outer_tx.template query<"SELECT * FROM goods">();
+    std::cout << "查到商品数量: " << rows.size() << std::endl;
+    std::cout << "外层后续业务...（因为内层报错，这行也不会被执行）"
+              << std::endl;
+  });
 }

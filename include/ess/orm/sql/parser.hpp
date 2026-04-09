@@ -15,9 +15,21 @@ enum class SQLErrorKind : uint8_t {
   ExpectedLiteralOrPlaceHolder,
   ExpectedRightParen,
   ExpectedLeftParenAfterIn,
-  ExpectedLiteralInList,
+  ExpectedLiteralOrPlaceHolderInList,
   ExpectedStringLiteralAfterLike,
   ExpectedAndInBetweenClause,
+  ExpectedNullAfterNotInIsClause,
+  ExpectedNullAfterInInIsClause,
+  ExpectedByAfterGroup,
+  ExpectedByAfterGroupInGroupByClause,
+  ExpectedIdentifierAfterByInGroupByClause,
+  HavingWithoutGroupBy,
+  ExpectedByAfterOrderInOrderByClause,
+  ExpectedIdentifierAfterByInOrderByClause,
+  ExpectedLeftParenAfterAggregate,
+  ExpectedIdentifierInAggregate,
+  ExpectedOperatorAfterAggregate,
+  ExpectedInOrLikeAfterNot,
   InvalidEnd,
   UnknownError,
 };
@@ -82,6 +94,7 @@ template <std::size_t TokenCount> class Parser {
 public:
   const std::array<Token, TokenCount> &m_tokens;
   std::size_t m_pos = 0;
+  bool m_in_subquery = false;
 
 public:
   constexpr Parser(const std::array<Token, TokenCount> &tokens)
@@ -158,19 +171,31 @@ public:
     }
   }
 
+  constexpr bool is_aggregate_func(TokenType type) {
+    switch (type) {
+    case TokenType::Count:
+    case TokenType::Sum:
+    case TokenType::Avg:
+    case TokenType::Max:
+    case TokenType::Min:
+      return true;
+    default:
+      return false;
+    }
+  }
+
   // Parse: IN (SELECT ...) or IN (val1, val2, ...)
   constexpr void parse_in_clause(ParseResult &result) {
     advance(); // Consume 'IN'
 
-    if (peek().type != TokenType::Lparen) {
-      result.has_error = true;
-      result.error = SQLErrorKind::ExpectedLeftParenAfterIn;
+    // Consume '('
+    if (!match(TokenType::Lparen, result,
+               SQLErrorKind::ExpectedLeftParenAfterIn)) {
       return;
     }
-    advance(); // Consume '('
 
     if (peek().type == TokenType::Select) {
-      auto res = parse_select();
+      auto res = parse_select(true);
       if (res.has_error) {
         result.has_error = true;
         result.error = res.error;
@@ -180,11 +205,12 @@ public:
       // Parse hardcoded literal list: (1, 2, 'abc')
       while (true) {
         if (peek().type == TokenType::Number ||
-            peek().type == TokenType::String) {
+            peek().type == TokenType::String ||
+            peek().type == TokenType::PlaceHolder) {
           advance();
         } else {
           result.has_error = true;
-          result.error = SQLErrorKind::ExpectedLiteralInList;
+          result.error = SQLErrorKind::ExpectedLiteralOrPlaceHolderInList;
           return;
         }
 
@@ -196,11 +222,8 @@ public:
       }
     }
 
-    if (peek().type == TokenType::Rparen) {
-      advance();
-    } else {
-      result.has_error = true;
-      result.error = SQLErrorKind::ExpectedRightParen;
+    if (!match(TokenType::Rparen, result, SQLErrorKind::ExpectedRightParen)) {
+      return;
     }
   }
 
@@ -250,6 +273,122 @@ public:
     }
   }
 
+  constexpr void parse_not_expr(ParseResult &result) {
+    advance();
+    switch (peek().type) {
+    case TokenType::In:
+      parse_in_clause(result);
+      break;
+    case TokenType::Like:
+      parse_like_clause(result);
+      break;
+    default: {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedInOrLikeAfterNot;
+    }
+    }
+  }
+
+  constexpr void parse_is_clause(ParseResult &result) {
+    advance(); // consume is
+
+    if (peek().type == TokenType::Null) {
+      advance();
+    } else if (peek().type == TokenType::Not) {
+      advance();
+      if (peek().type == TokenType::Null) {
+        advance();
+      } else {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedNullAfterNotInIsClause;
+      }
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedNullAfterInInIsClause;
+    }
+  }
+
+  constexpr void parse_aggregate_expr(ParseResult &result) {
+    TokenType agg_type = peek().type;
+    advance(); // Consume COUNT
+
+    // Consume '('
+    if (!match(TokenType::Lparen, result,
+               SQLErrorKind::ExpectedLeftParenAfterAggregate)) {
+      return;
+    }
+
+    if (agg_type == TokenType::Count && peek().type == TokenType::Star) {
+      advance(); // Consume '*'
+    } else if (peek().type == TokenType::Identifier) {
+      advance(); // Consume identifier
+    } else {
+      result.has_error = true;
+      result.error = SQLErrorKind::ExpectedIdentifierInAggregate;
+      return;
+    }
+
+    // Consume ')'
+    if (!match(TokenType::Rparen, result, SQLErrorKind::ExpectedRightParen)) {
+      return;
+    }
+  }
+
+  constexpr void parse_group_by_clause(ParseResult &result) {
+    advance(); // consume GROUP
+
+    if (!match(TokenType::By, result,
+               SQLErrorKind::ExpectedByAfterGroupInGroupByClause)) {
+      return;
+    }
+
+    if (!match(TokenType::Identifier, result,
+               SQLErrorKind::ExpectedIdentifierAfterByInGroupByClause)) {
+      return;
+    }
+
+    while (peek().type == TokenType::Comma) {
+      advance(); // consume ','
+
+      if (!match(TokenType::Identifier, result,
+                 SQLErrorKind::ExpectedIdentifierAfterByInGroupByClause)) {
+        return;
+      }
+    }
+  }
+
+  constexpr void parse_having_clause(ParseResult &result) {
+    advance(); // consume HAVING
+    parse_where_clause(result);
+  }
+
+  constexpr void parse_order_by_clause(ParseResult &result) {
+    advance(); // consume ORDER
+
+    if (!match(TokenType::By, result,
+               SQLErrorKind::ExpectedByAfterOrderInOrderByClause)) {
+      return;
+    }
+
+    while (true) {
+      if (!match(TokenType::Identifier, result,
+                 SQLErrorKind::ExpectedIdentifierAfterByInOrderByClause)) {
+        return;
+      }
+
+      if (peek().type == TokenType::Asc || peek().type == TokenType::Desc) {
+        advance();
+      }
+
+      if (peek().type == TokenType::Comma) {
+        advance();
+        continue;
+      }
+
+      break;
+    }
+  }
+
   // Parse: = , != , < , > , <= , >=
   constexpr void parse_binary_operator_clause(ParseResult &result) {
     advance(); // Consume operator
@@ -262,7 +401,7 @@ public:
       advance(); // Consume '('
 
       if (peek().type == TokenType::Select) {
-        auto res = parse_select();
+        auto res = parse_select(true);
         if (res.has_error) {
           result.has_error = true;
           result.error = res.error;
@@ -274,11 +413,8 @@ public:
         return;
       }
 
-      if (peek().type == TokenType::Rparen) {
-        advance();
-      } else {
-        result.has_error = true;
-        result.error = SQLErrorKind::ExpectedRightParen;
+      if (!match(TokenType::Rparen, result, SQLErrorKind::ExpectedRightParen)) {
+        return;
       }
     } else {
       result.has_error = true;
@@ -293,18 +429,16 @@ public:
 
       // Case A: (SELECT ...) -> Standalone subquery in expression
       if (peek().type == TokenType::Select) {
-        auto res = parse_select();
+        auto res = parse_select(true);
         if (res.has_error) {
           result.has_error = true;
           result.error = res.error;
           return;
         }
 
-        if (peek().type == TokenType::Rparen) {
-          advance();
-        } else {
-          result.has_error = true;
-          result.error = SQLErrorKind::ExpectedRightParen;
+        if (!match(TokenType::Rparen, result,
+                   SQLErrorKind::ExpectedRightParen)) {
+          return;
         }
         return;
       }
@@ -314,26 +448,49 @@ public:
       if (result.has_error)
         return;
 
-      if (peek().type == TokenType::Rparen) {
-        advance();
-      } else {
-        result.has_error = true;
-        result.error = SQLErrorKind::ExpectedRightParen;
+      if (!match(TokenType::Rparen, result, SQLErrorKind::ExpectedRightParen)) {
+        return;
       }
+      // exit the subquery
       return;
     }
 
     // 2. Match left-hand side operand (Must be a column identifier)
-    if (peek().type != TokenType::Identifier) {
+    if (is_aggregate_func(peek().type)) {
+      parse_aggregate_expr(result); // Consume aggregate function
+      if (result.has_error)
+        return;
+
+      if (!is_operator(peek().type)) {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedOperatorAfterAggregate;
+        return;
+      }
+      advance(); // Consume binaray op
+
+      if (!(peek().type == TokenType::Number ||
+            peek().type == TokenType::PlaceHolder)) {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedLiteralOrPlaceHolder;
+        return;
+      }
+      advance(); // Consume number or placeholder
+      return;
+    } else if (peek().type == TokenType::Identifier) {
+      advance(); // Consume Identifier
+    } else {
       result.has_error = true;
       result.error = SQLErrorKind::ExpectedIdentifierInWhereClause;
       return;
     }
-    advance(); // Consume Identifier
 
     // 3. Dispatch to specific clause parsers based on the current lookahead
     // token
     switch (peek().type) {
+    case TokenType::Not: {
+      parse_not_expr(result);
+      break;
+    }
     case TokenType::In:
       parse_in_clause(result);
       break;
@@ -344,6 +501,10 @@ public:
 
     case TokenType::Between:
       parse_between_clause(result);
+      break;
+
+    case TokenType::Is:
+      parse_is_clause(result);
       break;
 
     default:
@@ -386,7 +547,7 @@ public:
     }
   }
 
-  constexpr ParseResult parse_select() {
+  constexpr ParseResult parse_select(bool allow_rparen_end = false) {
     ParseResult result{};
     if (peek().type == TokenType::Select) {
       advance();
@@ -395,7 +556,12 @@ public:
       result.error = SQLErrorKind::UnknownBeginning;
       return result;
     }
-    // parse star or columns
+
+    // Consume DISTINCT or ALL
+    if (peek().type == TokenType::Distinct || peek().type == TokenType::All) {
+      advance();
+    }
+
     if (peek().type == TokenType::Star) {
       result.is_star = true;
       advance();
@@ -410,12 +576,10 @@ public:
       return result;
     }
 
-    // parse from
     if (!match(TokenType::From, result, SQLErrorKind::ExpectedFrom)) {
       return result;
     }
 
-    // parse table name
     if (!match(TokenType::Identifier, result,
                SQLErrorKind::ExpectedTableAfterFrom)) {
       return result;
@@ -424,19 +588,57 @@ public:
     if (peek().type == TokenType::Where) {
       advance();
       parse_where_clause(result);
-    } else if (at_end() || peek().type == TokenType::Rparen) {
-      return result;
-    } else {
-      result.has_error = true;
-      result.error = SQLErrorKind::InvalidEnd;
+      if (result.has_error)
+        return result;
+    }
+
+    bool has_group_by = false;
+
+    if (peek().type == TokenType::Group) {
+      parse_group_by_clause(result);
+      if (result.has_error)
+        return result;
+      has_group_by = true;
+    }
+
+    if (peek().type == TokenType::Having) {
+      if (!has_group_by) {
+        result.has_error = true;
+        result.error = SQLErrorKind::HavingWithoutGroupBy;
+        return result;
+      }
+
+      parse_having_clause(result);
+      if (result.has_error)
+        return result;
+    }
+
+    if (peek().type == TokenType::Order) {
+      parse_order_by_clause(result);
+      if (result.has_error)
+        return result;
+
+      if (peek().type == TokenType::Asc || peek().type == TokenType::Desc) {
+        advance();
+      }
+    }
+
+    if (at_end()) {
       return result;
     }
+
+    if (allow_rparen_end && peek().type == TokenType::Rparen) {
+      return result;
+    }
+
+    result.has_error = true;
+    result.error = SQLErrorKind::InvalidEnd;
     return result;
   }
 
   [[nodiscard]] constexpr ParseResult parse() {
     if (peek().type == TokenType::Select) {
-      return parse_select();
+      return parse_select(false);
     }
     return ParseResult::make_error();
   }
