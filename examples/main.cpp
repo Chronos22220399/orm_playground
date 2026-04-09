@@ -38,12 +38,13 @@ int main() {
   // Context::instance().register_db<default_db>();
 
   auto goods = query<Goods, //
-                     "SELECT ALL * FROM goods WHERE id IN "
-                     "(SELECT DISTINCT id FROM goods WHERE (COUNT(id) > ? AND "
-                     "id IS NOT NULL) AND id NOT LIKE '_id') "
-                     "GROUP BY id, name HAVING COUNT(id) > 0"
-                     "ORDER BY id ASC, name DESC"_sql //
-                     >(0, 1);
+                     "SELECT * FROM goods "
+                     "WHERE id IN ( "
+                     "SELECT id FROM goods WHERE id "
+                     "IS NOT NULL AND id > 0 "
+                     "GROUP BY id "
+                     "HAVING COUNT(id) > ?) "
+                     "ORDER BY id ASC, title DESC "_sql>(0);
 
   std::cout << "商品数量: " << goods.size() << std::endl;
   std::cout << "商品信息: " << std::endl;
