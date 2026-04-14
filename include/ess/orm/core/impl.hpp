@@ -96,8 +96,10 @@ auto query_impl(core::conn_ptr_wrapper wrapper, Args &&...args) {
   using namespace ess::orm::core;
   using namespace ess::orm::sql;
 
+  constexpr auto tokens = Lexer(SQL).template tokenize<128>().tokens;
+  constexpr TokenType first_token = tokens[0].type;
   constexpr TokenType query_type =
-      Lexer(SQL).template tokenize<128>().tokens[0].type;
+      (first_token == TokenType::With) ? TokenType::Select : first_token;
 
   core::Connection *conn;
   if (wrapper.m_value == nullptr) {

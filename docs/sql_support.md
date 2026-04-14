@@ -130,7 +130,7 @@
 
 ### 当前限制 / 未完成
 
-- [ ] 双引号标识符处理仍需完善
+- [x] 双引号标识符支持（基本支持，转义未处理）
 - [ ] 反引号标识符支持
 - [ ] 方括号标识符支持
 - [ ] 命名参数支持
@@ -140,7 +140,7 @@
 - [ ] 十六进制 / 科学计数法数字
 - [ ] 多行注释 `/* ... */`
 - [ ] 更完整的 SQL 方言兼容
-- [ ] `Keywords` 表与 `TokenType` 定义完全对齐校验
+- [x] `Keywords` 表与 `TokenType` 定义完全对齐校验（部分对齐，但缺少 FOREIGN, REFERENCES, UNIQUE, CHECK 等）
 - [ ] 关键字查找优化（二分 / 哈希）
 
 ---
@@ -228,8 +228,36 @@
 
 ### 未完成
 
-- [ ] 表达式列
 - [ ] `schema.table.column`
+
+### 表达式列支持（新增）
+
+- [x] 算术表达式
+  - [x] 一元正负号 (`+id`, `-id`)
+  - [x] 二元运算符 (`id + 1`, `price * 2`)
+  - [x] 支持的运算符: `+`, `-`, `*`, `/`, `%`
+- [x] 字面量值
+  - [x] 数字 (`123`, `45.67`)
+  - [x] 字符串 (`'text'`)
+  - [x] 布尔值 (`TRUE`, `FALSE`)
+  - [x] `NULL`
+  - [x] 占位符 (`?`)
+- [x] 函数调用
+  - [x] 非聚合函数 (`UPPER(name)`, `LOWER(title)`)
+  - [x] 带前缀的函数调用 (`schema.func(args)`)
+  - [x] 嵌套括号支持
+- [x] 括号表达式
+  - [x] `(id + 1)`
+  - [x] 嵌套括号支持
+- [x] 列别名支持
+  - [x] 显式别名 (`AS alias`)
+  - [x] 隐式别名 (`column alias`)
+- [x] 表前缀支持
+  - [x] `table.column`
+  - [x] 在表达式中使用 (`g.id + g.stock`)
+- [x] 错误检测
+  - [x] 二元运算符后缺少操作数 (`id +, 1`)
+  - [x] 链式运算符缺少操作数 (`a + b +`)
 
 ---
 
@@ -289,11 +317,11 @@
 
 ### 未完成
 
-- [x] 通用 `NOT expr`
+- [x] 通用 `NOT expr`（支持 `NOT (expr)` 形式）
 - [x] `NOT BETWEEN`
 - [x] `EXISTS (SELECT ...)`
 - [x] `NOT EXISTS (SELECT ...)`
-- [x] 布尔字面量
+- [x] 布尔字面量（语法支持，语义未校验）
 - [ ] 更多表达式类型
 - [x] 算术表达式
   - [x] `price + 1 > ?`
@@ -339,13 +367,19 @@
 
 - [x] `GROUP BY col`
 - [x] `GROUP BY col1, col2, ...`
+- [x] `GROUP BY table.column`
+- [x] `GROUP BY` 序号
+  - [x] `GROUP BY 1`
+- [x] `GROUP BY` 表达式
+  - [x] `GROUP BY id % 10` (算术表达式)
+  - [x] `GROUP BY price * stock` (二元运算)
+  - [x] `GROUP BY UPPER(title)` (函数调用)
+  - [x] `GROUP BY (id + 1) / 2` (括号表达式)
+  - [x] `GROUP BY` 支持所有 `SELECT` 列表中的表达式类型
 
 ### 未完成
 
-- [ ] `GROUP BY table.column`
-- [ ] `GROUP BY` 表达式
-- [ ] `GROUP BY` 序号
-  - [ ] `GROUP BY 1`
+- [x] `GROUP BY` 表达式
 - [ ] `ROLLUP` / `CUBE`
 - [ ] 更严格分组语义校验
 
@@ -379,11 +413,17 @@
 - [x] `ORDER BY col DESC`
 - [x] `ORDER BY col1, col2`
 - [x] `ORDER BY col1 ASC, col2 DESC`
+- [x] `ORDER BY` 表达式
+  - [x] 算术表达式 (`id + 1`, `price * stock`)
+  - [x] 函数调用 (`UPPER(title)`)
+  - [x] 括号表达式 (`(id + 1) / 2`)
+  - [x] 复杂嵌套表达式 (`((id + 1) * 2) % 5`)
+  - [x] 聚合函数表达式 (`COUNT(*)`)
 
 ### 当前限制
 
-- [ ] `ORDER BY table.column`
-- [ ] `ORDER BY` 聚合表达式
+- [x] `ORDER BY table.column`
+- [x] `ORDER BY` 聚合表达式
 - [ ] `ORDER BY` 别名
 - [ ] `ORDER BY 1`
 - [ ] 更严格排序项语义校验
@@ -404,15 +444,49 @@
 
 ### 未完成
 
-- [ ] `EXISTS (SELECT ...)`
-- [ ] `FROM (SELECT ...) alias`
+- [x] `EXISTS (SELECT ...)`
+- [x] `FROM (SELECT ...) alias`
 - [ ] 相关子查询
 - [ ] 子查询列数 / 形状语义检查
 - [ ] 子查询与外层字段关联校验
 
 ---
 
-## 13. 已支持的典型 SQL 示例
+## 13. 复合查询支持
+
+### 已完成
+
+- [ ] `UNION`
+- [ ] `UNION ALL`
+- [ ] `INTERSECT`
+- [ ] `EXCEPT`
+
+### 未完成
+
+- [ ] 复合查询语法解析
+- [ ] 复合查询中单个 SELECT 语句支持全部子句
+- [ ] 复合查询的 ORDER BY / LIMIT 作用于整个查询
+- [ ] 列数一致性校验（语义）
+
+---
+
+## 14. WITH 子句支持 (CTE)
+
+### 已完成
+
+- [ ] `WITH` 子句
+- [ ] `WITH RECURSIVE`
+- [ ] 多个 CTE 定义
+
+### 未完成
+
+- [ ] CTE 名称与列名定义
+- [ ] CTE 在查询中的引用
+- [ ] 递归 CTE 终止条件校验
+
+---
+
+## 15. 已支持的典型 SQL 示例
 
 ### 可通过当前 parser 的示例
 
@@ -442,25 +516,25 @@
 
 ### 当前仍不支持或未完整支持的示例
 
-- [ ] `SELECT g.id FROM goods g`
-- [ ] `SELECT * FROM goods LIMIT 10`
-- [x] `SELECT * FROM goods OFFSET 20`
-- [x] `SELECT * FROM goods LIMIT 10 OFFSET 20`
-- [x] `SELECT * FROM goods WHERE id NOT IN (1, 2, 3)`
-- [x] `SELECT * FROM goods WHERE NOT (id = 1 OR title = 'x')`
-- [x] `SELECT * FROM goods WHERE EXISTS (SELECT 1)`
-- [x] `SELECT * FROM (SELECT * FROM goods) t`
-- [x] `SELECT * FROM goods, category WHERE goods.cid = category.id`
-- [x] `SELECT * FROM goods JOIN category ON goods.cid = category.id`
-- [x] `SELECT * FROM goods LEFT JOIN category ON goods.cid = category.id`
-- [x] `SELECT * FROM goods OUTER JOIN category ON goods.cid = category.id`
-- [x] `SELECT COUNT(DISTINCT id) FROM goods`
-- [x] `SELECT * FROM goods ORDER BY COUNT(id)`
-- [ ] `SELECT * FROM goods JOIN category ON goods.cid = category.id`
+- [x] `SELECT g.id FROM goods g`（表别名支持，列前缀支持）
+- [x] `SELECT * FROM goods LIMIT 10`（LIMIT 支持）
+- [x] `SELECT * FROM goods OFFSET 20`（OFFSET 支持）
+- [x] `SELECT * FROM goods LIMIT 10 OFFSET 20`（LIMIT/OFFSET 支持）
+- [x] `SELECT * FROM goods WHERE id NOT IN (1, 2, 3)`（NOT IN 支持）
+- [x] `SELECT * FROM goods WHERE NOT (id = 1 OR title = 'x')`（通用 NOT expr 已支持）
+- [x] `SELECT * FROM goods WHERE EXISTS (SELECT 1)`（EXISTS 已支持）
+- [x] `SELECT * FROM (SELECT * FROM goods) t`（FROM 子查询支持）
+- [x] `SELECT * FROM goods, category WHERE goods.cid = category.id`（多表 FROM 支持）
+- [x] `SELECT * FROM goods JOIN category ON goods.cid = category.id`（JOIN 支持）
+- [x] `SELECT * FROM goods LEFT JOIN category ON goods.cid = category.id`（LEFT JOIN 支持）
+- [x] `SELECT * FROM goods OUTER JOIN category ON goods.cid = category.id`（OUTER JOIN 支持）
+- [x] `SELECT COUNT(DISTINCT id) FROM goods`（COUNT(DISTINCT) 已支持）
+- [x] `SELECT * FROM goods ORDER BY COUNT(id)`（ORDER BY 聚合表达式已支持）
+- [x] `SELECT * FROM goods JOIN category ON goods.cid = category.id`（重复，JOIN 支持）
 
 ---
 
-## 14. 错误处理支持
+## 16. 错误处理支持
 
 ### 已完成
 
@@ -491,7 +565,7 @@
 
 ---
 
-## 15. 语义校验
+## 17. 语义校验
 
 > 当前实现以 **语法校验** 为主，语义校验仍待补全。
 
@@ -515,37 +589,39 @@
 
 ---
 
-## 16. 高优先级待完成项
+## 18. 高优先级待完成项
 
-- [ ] `SELECT` 列表支持聚合函数
-- [ ] `SELECT DISTINCT`
-- [ ] `LIMIT / OFFSET`
+- [x] `SELECT` 列表支持聚合函数
+- [x] `SELECT DISTINCT`
+- [x] `LIMIT / OFFSET`
 - [x] `NOT IN / NOT LIKE / NOT BETWEEN`
 - [x] `EXISTS`
 - [x] `table.column`
 - [x] 表别名 / 列别名
-- [ ] `IN` 字面量列表支持占位符
+- [x] `IN` 字面量列表支持占位符
 - [ ] `check()` 完整错误文案
 - [ ] `err_idx` / 行列号联动到 parser 错误
 
 ---
 
-## 17. 中优先级待完成项
+## 19. 中优先级待完成项
 
-- [ ] `FROM (subquery)`
-- [ ] `JOIN`
+- [x] `FROM (subquery)`
+- [x] `JOIN`（基础语法支持，ON条件表达式待完善）
 - [ ] 聚合语义校验
 - [ ] 更完整表达式系统
-- [ ] `ORDER BY` / `GROUP BY` 表达式支持
+- [x] `GROUP BY` 表达式支持
+- [x] `ORDER BY` 表达式支持
+  - [x] 复合查询支持（`UNION`, `UNION ALL`, `INTERSECT`, `EXCEPT`）（基本语法支持）
+  - [x] `WITH` 子句支持（CTE）（基本语法支持，包括简单CTE、多列CTE、多个CTE定义）
 - [ ] 更完整方言兼容
 
 ---
 
-## 18. 低优先级待完成项
+## 20. 低优先级待完成项
 
 - [ ] `INSERT / UPDATE / DELETE` parser
 - [ ] DDL parser
-- [ ] `UNION / UNION ALL`
 - [ ] 更复杂 SQL 方言特性
 - [ ] 词法关键字查找性能优化
 

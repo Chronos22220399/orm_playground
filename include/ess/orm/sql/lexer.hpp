@@ -100,6 +100,9 @@ private:
       return make_token(TokenType::Minus, start_pos, 1, start_line, start_col);
     case '/':
       return make_token(TokenType::Slash, start_pos, 1, start_line, start_col);
+    case '%':
+      return make_token(TokenType::Percent, start_pos, 1, start_line,
+                        start_col);
     case '?':
       return make_token(TokenType::PlaceHolder, start_pos, 1, start_line,
                         start_col);
