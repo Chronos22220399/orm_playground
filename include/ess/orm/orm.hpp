@@ -34,7 +34,6 @@
 #include <ess/orm/dsl/traits.hpp>
 
 // SQL processing
-#include <ess/orm/sql/common.hpp>
 #include <ess/orm/sql/lexer.hpp>
 #include <ess/orm/sql/parser.hpp>
 #include <ess/orm/sql/token.hpp>

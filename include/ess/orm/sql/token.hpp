@@ -19,6 +19,7 @@ enum class TokenType : std::uint8_t {
   Count, Sum, Avg, Max, Min,
   Group, Having,
   Exists,
+  True, False,
   Create, Table, Drop, Alter,
   Index, Primary, Key, Foreign, References,
   Default, Unique, Check,
@@ -66,7 +67,7 @@ struct KeywordEntry {
   TokenType type;
 };
 
-inline constexpr std::array<KeywordEntry, 48> Keywords = {{
+inline constexpr std::array<KeywordEntry, 50> Keywords = {{
     {"SELECT", TokenType::Select},   {"INSERT", TokenType::Insert},
     {"UPDATE", TokenType::Update},   {"DELETE", TokenType::Delete},
     {"FROM", TokenType::From},       {"INTO", TokenType::Into},
@@ -87,7 +88,8 @@ inline constexpr std::array<KeywordEntry, 48> Keywords = {{
     {"SUM", TokenType::Sum},         {"AVG", TokenType::Avg},
     {"MAX", TokenType::Max},         {"MIN", TokenType::Min},
     {"GROUP", TokenType::Group},     {"HAVING", TokenType::Having},
-    {"EXISTS", TokenType::Exists},   {"CREATE", TokenType::Create},
+    {"EXISTS", TokenType::Exists},   {"TRUE", TokenType::True},
+    {"FALSE", TokenType::False},     {"CREATE", TokenType::Create},
     {"TABLE", TokenType::Table},     {"DROP", TokenType::Drop},
     {"ALTER", TokenType::Alter},     {"PRIMARY", TokenType::Primary},
     {"KEY", TokenType::Key},         {"DEFAULT", TokenType::Default},

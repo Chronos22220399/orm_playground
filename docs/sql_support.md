@@ -161,8 +161,6 @@
 - [ ] `INSERT`
 - [ ] `UPDATE`
 - [ ] `DELETE`
-- [ ] DDL 语句 parser
-- [ ] 多语句解析
 - [ ] 方言特化 parser
 
 ---
@@ -182,22 +180,26 @@
 - [x] `HAVING`
 - [x] `ORDER BY`
 
-### 未完成
+### 已完成
 
-- [ ] `SELECT` 列表达式
-  - [ ] `SELECT COUNT(*)`
-  - [ ] `SELECT SUM(price)`
-  - [ ] `SELECT id, COUNT(*)`
-- [ ] 列别名
-  - [ ] `SELECT id AS gid`
-- [ ] 表别名
-  - [ ] `FROM goods g`
-- [ ] `FROM` 子查询
-  - [ ] `FROM (SELECT ...) t`
-- [ ] 多表 `FROM`
-- [ ] `JOIN`
-- [ ] `LIMIT`
-- [ ] `OFFSET`
+- [x] 列别名
+- [x] 表别名
+  - [x] `FROM goods g`
+  - [x] WHERE 子句中表别名 (`g.id > 0`)
+- [x] `FROM` 子查询
+  - [x] `FROM (SELECT ...) alias`
+- [x] 多表 `FROM`
+  - [x] `FROM t1, t2`
+  - [x] `FROM t1, t2 WHERE t1.id = t2.id`
+- [x] `JOIN`
+  - [x] `JOIN ... ON ...`
+  - [x] `LEFT JOIN ... ON ...`
+  - [x] `RIGHT JOIN ... ON ...`
+  - [x] `INNER JOIN ... ON ...`
+  - [x] `OUTER JOIN ... ON ...`
+  - [x] `CROSS JOIN`
+- [x] `LIMIT`
+- [x] `OFFSET`
 
 ---
 
@@ -207,18 +209,26 @@
 
 - [x] `*`
 - [x] 普通标识符列列表
+- [x] 聚合表达式列
+  - [x] `COUNT(*)`
+  - [x] `COUNT(id)`
+  - [x] `SUM(id)`
+  - [x] `AVG(id)`
+  - [x] `MAX(id)`
+  - [x] `MIN(id)`
+- [x] `has_aggregate` 语义标记
 - [x] `DISTINCT` 列表支持
 - [x] 列名位置导出
   - [x] `column_start`
   - [x] `column_names[pos/len]`
-- [x] 最多记录固定数量的列名（当前为 32）
+  - [x] 列别名解析 (`AS`)
+  - [x] `table.column` 解析
+  - [x] `has_table_prefix` 标记
+  - [x] 最多记录固定数量的列名（当前为 32）
 
 ### 未完成
 
-- [ ] 聚合列表达式
 - [ ] 表达式列
-- [ ] 列别名
-- [ ] `table.column`
 - [ ] `schema.table.column`
 
 ---
@@ -228,18 +238,19 @@
 ### 已完成
 
 - [x] `FROM identifier`
-
-### 未完成
-
-- [ ] 表别名
-- [ ] 多表查询
-- [ ] `JOIN ... ON ...`
-- [ ] `LEFT JOIN`
-- [ ] `RIGHT JOIN`
-- [ ] `INNER JOIN`
-- [ ] `OUTER JOIN`
-- [ ] `CROSS JOIN`
-- [ ] `FROM (SELECT ...) alias`
+- [x] 表别名
+  - [x] `FROM goods g`
+  - [x] WHERE 子句中表别名 (`g.id > 0`)
+- [x] 多表查询
+  - [x] `FROM t1, t2`
+  - [x] `FROM t1, t2 WHERE t1.id = t2.id`
+- [x] `JOIN ... ON ...`
+- [x] `LEFT JOIN ... ON ...`
+- [x] `RIGHT JOIN ... ON ...`
+- [x] `INNER JOIN ... ON ...`
+- [x] `OUTER JOIN ... ON ...`
+- [x] `CROSS JOIN`
+- [x] `FROM (SELECT ...) alias`
 
 ---
 
@@ -278,17 +289,20 @@
 
 ### 未完成
 
-- [ ] 通用 `NOT expr`
-- [ ] `NOT BETWEEN`
-- [ ] `EXISTS (SELECT ...)`
-- [ ] `NOT EXISTS (SELECT ...)`
-- [ ] 布尔字面量
+- [x] 通用 `NOT expr`
+- [x] `NOT BETWEEN`
+- [x] `EXISTS (SELECT ...)`
+- [x] `NOT EXISTS (SELECT ...)`
+- [x] 布尔字面量
 - [ ] 更多表达式类型
-- [ ] 算术表达式
-  - [ ] `price + 1 > ?`
-- [ ] 一元正负号
-- [ ] `col = NULL` 语义拦截
-- [ ] 更严格的空值语义校验
+- [x] 算术表达式
+  - [x] `price + 1 > ?`
+  - [x] `1 + 1 = id`
+- [x] 一元正负号
+- [x] `col = NULL` 语义拦截
+- [x] 更严格的空值语义校验
+  - [x] 拦截 `1 IS NULL`
+  - [x] 拦截 `NULL IS NULL`
 
 ---
 
@@ -314,14 +328,8 @@
 - [x] 聚合表达式右值支持
   - [x] 数字
   - [x] 占位符
-
-### 未完成
-
-- [ ] 聚合表达式出现在 `SELECT` 列表中
-- [ ] 聚合表达式出现在 `ORDER BY`
-- [ ] `COUNT(DISTINCT col)`
-- [ ] 聚合表达式别名
-- [ ] 更强的聚合语义检查
+- [x] 聚合表达式出现在 ORDER BY
+- [x] `COUNT(DISTINCT col)` 支持
 
 ---
 
@@ -427,20 +435,27 @@
 - [x] `SELECT * FROM goods ORDER BY id DESC`
 - [x] `SELECT * FROM goods ORDER BY id ASC, title DESC`
 - [x] `SELECT * FROM goods WHERE id IN (SELECT id FROM goods WHERE (COUNT(id) > ? AND id IS NOT NULL)) ORDER BY id`
+- [x] `SELECT COUNT(*) FROM goods`
+- [x] `SELECT id, COUNT(*) FROM goods GROUP BY id`
+- [x] `SELECT * FROM goods WHERE 1 + 1 = id AND id = 1 + 1`
+- [x] `SELECT * FROM goods WHERE -id > 0`
 
 ### 当前仍不支持或未完整支持的示例
 
-- [ ] `SELECT DISTINCT id FROM goods`
-- [ ] `SELECT COUNT(*) FROM goods`
-- [ ] `SELECT id, COUNT(*) FROM goods GROUP BY id`
 - [ ] `SELECT g.id FROM goods g`
 - [ ] `SELECT * FROM goods LIMIT 10`
-- [ ] `SELECT * FROM goods OFFSET 20`
-- [ ] `SELECT * FROM goods LIMIT 10 OFFSET 20`
-- [ ] `SELECT * FROM goods WHERE id NOT IN (1, 2, 3)`
-- [ ] `SELECT * FROM goods WHERE NOT (id = 1 OR title = 'x')`
-- [ ] `SELECT * FROM goods WHERE EXISTS (SELECT 1 FROM goods)`
-- [ ] `SELECT * FROM (SELECT * FROM goods) t`
+- [x] `SELECT * FROM goods OFFSET 20`
+- [x] `SELECT * FROM goods LIMIT 10 OFFSET 20`
+- [x] `SELECT * FROM goods WHERE id NOT IN (1, 2, 3)`
+- [x] `SELECT * FROM goods WHERE NOT (id = 1 OR title = 'x')`
+- [x] `SELECT * FROM goods WHERE EXISTS (SELECT 1)`
+- [x] `SELECT * FROM (SELECT * FROM goods) t`
+- [x] `SELECT * FROM goods, category WHERE goods.cid = category.id`
+- [x] `SELECT * FROM goods JOIN category ON goods.cid = category.id`
+- [x] `SELECT * FROM goods LEFT JOIN category ON goods.cid = category.id`
+- [x] `SELECT * FROM goods OUTER JOIN category ON goods.cid = category.id`
+- [x] `SELECT COUNT(DISTINCT id) FROM goods`
+- [x] `SELECT * FROM goods ORDER BY COUNT(id)`
 - [ ] `SELECT * FROM goods JOIN category ON goods.cid = category.id`
 
 ---
@@ -505,10 +520,10 @@
 - [ ] `SELECT` 列表支持聚合函数
 - [ ] `SELECT DISTINCT`
 - [ ] `LIMIT / OFFSET`
-- [ ] `NOT IN / NOT LIKE / NOT BETWEEN`
-- [ ] `EXISTS`
-- [ ] `table.column`
-- [ ] 表别名 / 列别名
+- [x] `NOT IN / NOT LIKE / NOT BETWEEN`
+- [x] `EXISTS`
+- [x] `table.column`
+- [x] 表别名 / 列别名
 - [ ] `IN` 字面量列表支持占位符
 - [ ] `check()` 完整错误文案
 - [ ] `err_idx` / 行列号联动到 parser 错误
