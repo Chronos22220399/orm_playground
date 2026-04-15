@@ -456,16 +456,16 @@
 
 ### 已完成
 
-- [ ] `UNION`
-- [ ] `UNION ALL`
-- [ ] `INTERSECT`
-- [ ] `EXCEPT`
+- [x] `UNION`
+- [x] `UNION ALL`
+- [x] `INTERSECT`
+- [x] `EXCEPT`
+- [x] 复合查询语法解析
+- [x] 复合查询中单个 SELECT 语句支持全部子句
 
 ### 未完成
 
-- [ ] 复合查询语法解析
-- [ ] 复合查询中单个 SELECT 语句支持全部子句
-- [ ] 复合查询的 ORDER BY / LIMIT 作用于整个查询
+- [ ] 复合查询的 ORDER BY / LIMIT 作用于整个查询（当前 ORDER BY/LIMIT 属于最后一个 SELECT）
 - [ ] 列数一致性校验（语义）
 
 ---
@@ -474,15 +474,18 @@
 
 ### 已完成
 
-- [ ] `WITH` 子句
-- [ ] `WITH RECURSIVE`
-- [ ] 多个 CTE 定义
+- [x] `WITH` 子句
+- [ ] `WITH RECURSIVE`（语法支持，但递归语义未实现）
+- [x] 多个 CTE 定义
+- [x] CTE 名称与列名定义
+- [x] CTE 在查询中的引用
+- [x] CTE 后接复合查询（如 `WITH ... SELECT ... UNION ...`）
 
 ### 未完成
 
-- [ ] CTE 名称与列名定义
-- [ ] CTE 在查询中的引用
 - [ ] 递归 CTE 终止条件校验
+- [ ] 嵌套 WITH 子句（WITH 中包含 WITH）
+- [ ] CTE 列类型推导与校验
 
 ---
 
@@ -531,6 +534,15 @@
 - [x] `SELECT COUNT(DISTINCT id) FROM goods`（COUNT(DISTINCT) 已支持）
 - [x] `SELECT * FROM goods ORDER BY COUNT(id)`（ORDER BY 聚合表达式已支持）
 - [x] `SELECT * FROM goods JOIN category ON goods.cid = category.id`（重复，JOIN 支持）
+- [x] `SELECT * FROM goods UNION SELECT * FROM goods WHERE id < 100`（UNION 支持）
+- [x] `SELECT * FROM goods UNION ALL SELECT * FROM goods WHERE id < 100`（UNION ALL 支持）
+- [x] `SELECT * FROM goods INTERSECT SELECT * FROM goods WHERE id < 100`（INTERSECT 支持）
+- [x] `SELECT * FROM goods EXCEPT SELECT * FROM goods WHERE id < 100`（EXCEPT 支持）
+- [x] `WITH cte AS (SELECT * FROM goods) SELECT * FROM cte`（WITH 子句支持）
+- [x] `WITH cte(id, title) AS (SELECT id, title FROM goods) SELECT * FROM cte`（CTE 列名定义支持）
+- [x] `WITH cte1 AS (...), cte2 AS (...) SELECT ...`（多个 CTE 支持）
+- [x] `WITH filtered AS (SELECT * FROM goods WHERE id > 0) SELECT * FROM filtered UNION SELECT * FROM goods WHERE id < 100`（CTE + UNION 支持）
+- [x] `WITH cte1 AS (...), cte2 AS (...) SELECT * FROM cte1 UNION SELECT * FROM cte2`（多个 CTE + UNION 支持）
 
 ---
 

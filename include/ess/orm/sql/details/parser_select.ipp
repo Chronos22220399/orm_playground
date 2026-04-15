@@ -250,6 +250,14 @@ constexpr ParseResult Parser<TokenCount>::parse_select(bool allow_rparen_end) {
     return result;
   }
 
+  // If the next token is a compound operator (UNION, INTERSECT, EXCEPT),
+  // return without error - the caller (parse_compound_select) will handle it
+  if (peek().type == TokenType::Union ||
+      peek().type == TokenType::Intersect ||
+      peek().type == TokenType::Except) {
+    return result;
+  }
+
   result.has_error = true;
   result.error = SQLErrorKind::InvalidEnd;
   result.err_idx = peek().pos;
@@ -334,6 +342,16 @@ constexpr void Parser<TokenCount>::parse_with_clause(ParseResult &result) {
       break;
     }
   }
+  
+  // After parsing all CTE definitions, the next token should be SELECT
+  // (or another WITH for nested WITH clauses, but we don't support that)
+  // Note: This check might be too strict for some valid SQL constructs
+  // if (peek().type != TokenType::Select) {
+  //   result.has_error = true;
+  //   result.error = SQLErrorKind::UnknownBeginning;
+  //   result.err_idx = peek().pos;
+  //   return;
+  // }
 }
 
 template <std::size_t TokenCount>

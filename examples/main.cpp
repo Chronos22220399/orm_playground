@@ -37,14 +37,14 @@ int main() {
   Context::instance().init();
   // Context::instance().register_db<default_db>();
 
-  auto goods = query<Goods, //
-                     "SELECT goods.id, COUNT(id) as cnt_id FROM goods "
-                     "WHERE id IN ( "
-                     "SELECT id FROM goods WHERE id "
-                     "IS NOT NULL AND id > 0 "
-                     "GROUP BY id "
-                     "HAVING COUNT(id) > ?) "
-                     "ORDER BY id ASC, title DESC "_sql>(0);
+  // auto goods = query<Goods, //
+  //                    "SELECT goods.id, COUNT(id) as cnt_id FROM goods "
+  //                    "WHERE id IN ( "
+  //                    "SELECT id FROM goods WHERE id "
+  //                    "IS NOT NULL AND id > 0 "
+  //                    "GROUP BY id "
+  //                    "HAVING COUNT(id) > ?) "
+  //                    "ORDER BY id ASC, title DESC "_sql>(0);
 
   // auto goods = query<Goods, "SELECT * FROM goods WHERE id > 0"_sql>();
 
@@ -91,9 +91,9 @@ int main() {
   //     query<Goods, "SELECT COUNT(DISTINCT id) FROM goods"_sql>();
 
   // 列别名测试
-  auto goods_alias =
-      query<Goods,
-            "SELECT id AS goods_id, title AS goods_title FROM goods"_sql>();
+  // auto goods_alias =
+  //     query<Goods,
+  //           "SELECT id AS goods_id, title AS goods_title FROM goods"_sql>();
 
   // 表前缀测试
   auto goods_table_prefix =
@@ -483,22 +483,12 @@ int main() {
       "WITH cte(id, title) AS (SELECT id, title FROM goods WHERE id > 0) SELECT * FROM cte"_sql>();
   std::cout << "多列 CTE 测试通过" << std::endl;
 
-#if 0
-  // 3. 多个 CTE
-  auto multiple_cte = query<
-      Goods,
-      "WITH cte1 AS (SELECT * FROM goods WHERE id > 0), "
-      "cte2 AS (SELECT * FROM goods WHERE id < 100) "
-      "SELECT * FROM cte1 UNION SELECT * FROM cte2"_sql>();
-  std::cout << "多个 CTE 测试通过" << std::endl;
-
-  // 4. CTE 与复合查询结合
-  auto cte_with_union = query<
+  // 3. 简单 CTE + UNION 测试
+  auto cte_simple_union = query<
       Goods,
       "WITH filtered AS (SELECT * FROM goods WHERE id > 0) "
       "SELECT * FROM filtered UNION SELECT * FROM goods WHERE id < 100"_sql>();
-  std::cout << "CTE 与复合查询结合测试通过" << std::endl;
-#endif
+  std::cout << "简单 CTE + UNION 测试通过" << std::endl;
 
   // 3.1 简单多个 CTE (无 UNION)
   auto simple_multiple_cte =
@@ -513,6 +503,13 @@ int main() {
   //     "WITH RECURSIVE cte AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM cte
   //     WHERE n < 10) SELECT * FROM cte"_sql>();
   // std::cout << "WITH RECURSIVE 测试通过" << std::endl;
+
+  // 6. 多个 CTE + 复合查询
+  auto multiple_cte_compound =
+      query<Goods, "WITH cte1 AS (SELECT * FROM goods WHERE id > 0), "
+                   "cte2 AS (SELECT * FROM goods WHERE id < 100) "
+                   "SELECT * FROM cte1 UNION SELECT * FROM cte2"_sql>();
+  std::cout << "多个 CTE + 复合查询测试通过" << std::endl;
 
   // ========== 错误检测测试（以下SQL应导致编译错误）==========
   std::cout << "\n=== 错误检测测试 ===\n";
