@@ -238,6 +238,10 @@ constexpr void Parser<TokenCount>::parse_select_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
+    // Record placeholder for semantic analysis
+    if (peek().type == TokenType::PlaceHolder) {
+      result.semantic_result.add_placeholder(peek().pos);
+    }
     advance();
   } else if (peek().type == TokenType::Lparen) {
     // Parenthesized expression
@@ -378,6 +382,10 @@ constexpr void Parser<TokenCount>::parse_in_clause(ParseResult &result) {
     while (true) {
       if (peek().type == TokenType::Number || peek().type == TokenType::String ||
           peek().type == TokenType::PlaceHolder || peek().type == TokenType::Identifier) {
+        // Record placeholder for semantic analysis
+        if (peek().type == TokenType::PlaceHolder) {
+          result.semantic_result.add_placeholder(peek().pos);
+        }
         advance();
       } else {
         break;
@@ -641,6 +649,10 @@ constexpr void Parser<TokenCount>::parse_group_by_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
+    // Record placeholder for semantic analysis
+    if (peek().type == TokenType::PlaceHolder) {
+      result.semantic_result.add_placeholder(peek().pos);
+    }
     advance();
   } else if (peek().type == TokenType::Lparen) {
     // Parenthesized expression
@@ -776,6 +788,10 @@ constexpr void Parser<TokenCount>::parse_order_by_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
+    // Record placeholder for semantic analysis
+    if (peek().type == TokenType::PlaceHolder) {
+      result.semantic_result.add_placeholder(peek().pos);
+    }
     advance();
   } else if (peek().type == TokenType::Lparen) {
     // Parenthesized expression
@@ -867,7 +883,12 @@ constexpr void Parser<TokenCount>::parse_binary_operator_clause(
              peek().type == TokenType::True ||
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
+    // Literal value
     has_operand = true;
+    // Record placeholder for semantic analysis
+    if (peek().type == TokenType::PlaceHolder) {
+      result.semantic_result.add_placeholder(peek().pos);
+    }
     advance();
   } else if (peek().type == TokenType::Lparen) {
     has_operand = true;
@@ -943,6 +964,10 @@ constexpr void Parser<TokenCount>::parse_arithmetic_expr(ParseResult &result) {
   }
 
   if (peek().type == TokenType::Number || peek().type == TokenType::PlaceHolder) {
+    // Record placeholder for semantic analysis
+    if (peek().type == TokenType::PlaceHolder) {
+      result.semantic_result.add_placeholder(peek().pos);
+    }
     advance();
   } else if (peek().type == TokenType::Identifier) {
     result.has_left_column = true;
@@ -1080,6 +1105,11 @@ constexpr void Parser<TokenCount>::parse_primary_expr(ParseResult &result) {
           result.error = SQLErrorKind::NullComparisonNotAllowed;
           result.err_idx = peek().pos;
           return;
+        }
+        
+        // Record placeholder for semantic analysis
+        if (peek().type == TokenType::PlaceHolder) {
+          result.semantic_result.add_placeholder(peek().pos);
         }
         
         advance();

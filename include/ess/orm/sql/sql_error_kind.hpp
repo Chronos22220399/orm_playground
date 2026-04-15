@@ -37,6 +37,28 @@ enum class SQLErrorKind : uint8_t {
   InvalidIsNullOperand,
   MissingOperator,
   InvalidSelectItem,
+  ExpectedInsert,
+  ExpectedUpdate,
+  ExpectedDelete,
+  ExpectedInto,
+  ExpectedSet,
+  ExpectedFromAfterDelete,
+  ExpectedValuesOrSelect,
+  ExpectedValue,
+  ExpectedAssignment,
+
+  // 语义错误（新增）
+  PlaceholderCountMismatch, // 占位符数量不匹配
+  ColumnNotFound,           // 列不存在
+  TableMismatch,            // 表名不匹配
+  TypeMismatch,             // 类型不兼容
+  InvalidFunctionCall,      // 函数调用无效
+  FunctionNotFound,         // 函数不存在
+  InvalidFunctionArgs,      // 函数参数无效
+  AggregateWithoutGroupBy,  // 聚合缺少GROUP BY
+  IncompleteStatement,      // 语句不完整
+  InvalidNullComparison,    // 无效的NULL比较
+
   UnknownError,
 };
 

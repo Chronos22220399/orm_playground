@@ -218,6 +218,10 @@ constexpr ParseResult Parser<TokenCount>::parse_select(bool allow_rparen_end) {
         peek().type == TokenType::PlaceHolder) {
       result.limit_pos = peek().pos;
       result.limit_len = peek().len;
+      // Record placeholder for semantic analysis
+      if (peek().type == TokenType::PlaceHolder) {
+        result.semantic_result.add_placeholder(peek().pos);
+      }
       advance();
     } else {
       result.has_error = true;
@@ -232,6 +236,10 @@ constexpr ParseResult Parser<TokenCount>::parse_select(bool allow_rparen_end) {
           peek().type == TokenType::PlaceHolder) {
         result.offset_pos = peek().pos;
         result.offset_len = peek().len;
+        // Record placeholder for semantic analysis
+        if (peek().type == TokenType::PlaceHolder) {
+          result.semantic_result.add_placeholder(peek().pos);
+        }
         advance();
       } else {
         result.has_error = true;
@@ -415,6 +423,21 @@ template <std::size_t TokenCount>
     // After WITH clause, expect a SELECT statement (could be compound)
     // For now, just parse a compound SELECT
     return parse_compound_select(false);
+  }
+
+  // Check for INSERT
+  if (peek().type == TokenType::Insert) {
+    return parse_insert();
+  }
+
+  // Check for UPDATE
+  if (peek().type == TokenType::Update) {
+    return parse_update();
+  }
+
+  // Check for DELETE
+  if (peek().type == TokenType::Delete) {
+    return parse_delete();
   }
 
   // Otherwise, parse a SELECT statement (could be compound)
