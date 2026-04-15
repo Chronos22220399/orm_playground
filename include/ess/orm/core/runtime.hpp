@@ -2,6 +2,7 @@
 #include <ess/orm/core/impl.hpp>
 #include <ess/orm/core/result.hpp>
 #include <ess/orm/core/transaction.hpp>
+#include <ess/orm/sql/concepts.hpp>
 #include <functional>
 #include <optional>
 
@@ -9,6 +10,7 @@ namespace ess::orm {
 /*
  * @author: Ess
  */
+// 版本1：带表类型，FixedString（不校验）
 template <concepts::table_type Table, meta::FixedString SQL,
           template <typename...> class Container = std::vector,
           typename ContainerSize =
@@ -20,9 +22,7 @@ auto query(Args &&...args) {
                                          std::forward<Args>(args)...);
 }
 
-/*
- * @author: ess
- */
+// 版本2：无表类型，FixedString（不校验）
 template <meta::FixedString SQL,
           template <typename...> class Container = std::vector,
           typename ContainerSize =
@@ -31,6 +31,33 @@ template <meta::FixedString SQL,
 auto query(Args &&...args) {
   return impl::query_impl<core::table_tag<void>, SQL, Container, ContainerSize>(
       core::conn_ptr_wrapper{nullptr}, std::forward<Args>(args)...);
+}
+
+// 版本3：带表类型，SqlParseResult（完整校验）
+template <concepts::table_type Table, auto ParsedSQL,
+          template <typename...> class Container = std::vector,
+          typename ContainerSize =
+              core::ContainerSize<config::default_container_size>,
+          typename... Args>
+  requires sql::valid_sql_for_table<Table, decltype(ParsedSQL), sizeof...(Args)>
+auto query(Args &&...args) {
+  using SQLType = decltype(ParsedSQL);
+  return impl::query_impl<core::table_tag<Table>, SQLType::str(), Container,
+                          ContainerSize>(core::conn_ptr_wrapper{nullptr},
+                                         std::forward<Args>(args)...);
+}
+
+// 版本4：无表类型，SqlParseResult（只校验占位符数量）
+template <auto ParsedSQL, template <typename...> class Container = std::vector,
+          typename ContainerSize =
+              core::ContainerSize<config::default_container_size>,
+          typename... Args>
+  requires sql::valid_sql_basic<decltype(ParsedSQL), sizeof...(Args)>
+auto query(Args &&...args) {
+  using SQLType = decltype(ParsedSQL);
+  return impl::query_impl<core::table_tag<void>, SQLType::str(), Container,
+                          ContainerSize>(core::conn_ptr_wrapper{nullptr},
+                                         std::forward<Args>(args)...);
 }
 
 namespace impl {

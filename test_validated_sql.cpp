@@ -3,15 +3,15 @@
 
 using namespace ess::orm::sql;
 
-// 测试ValidatedSql类型
+// 测试SqlParseResult类型
 void test_validated_sql() {
-  std::cout << "Testing ValidatedSql type...\n";
+  std::cout << "Testing SqlParseResult type...\n";
 
   // 测试1：基础语法验证
   {
     constexpr auto validated = "SELECT * FROM users"_sql;
-    std::cout << "Test 1 passed: ValidatedSql created\n";
-    std::cout << "  SQL: " << validated.str().view() << "\n";
+    std::cout << "Test 1 passed: SqlParseResult created\n";
+    std::cout << "  SQL: " << std::string_view(validated.str()) << "\n";
     std::cout << "  Placeholder count: " << validated.placeholder_count()
               << "\n";
   }
@@ -20,7 +20,7 @@ void test_validated_sql() {
   {
     constexpr auto validated = "SELECT * FROM users WHERE id = ?"_sql;
     std::cout << "Test 2 passed: SQL with placeholder\n";
-    std::cout << "  SQL: " << validated.str().view() << "\n";
+    std::cout << "  SQL: " << std::string_view(validated.str()) << "\n";
     std::cout << "  Placeholder count: " << validated.placeholder_count()
               << "\n";
   }
@@ -30,7 +30,7 @@ void test_validated_sql() {
     constexpr auto validated =
         "SELECT * FROM users WHERE id = ? AND name = ?"_sql;
     std::cout << "Test 3 passed: SQL with multiple placeholders\n";
-    std::cout << "  SQL: " << validated.str().view() << "\n";
+    std::cout << "  SQL: " << std::string_view(validated.str()) << "\n";
     std::cout << "  Placeholder count: " << validated.placeholder_count()
               << "\n";
   }
@@ -39,7 +39,7 @@ void test_validated_sql() {
   {
     constexpr auto validated = "SELECT id + 1 FROM goods"_sql;
     std::cout << "Test 4 passed: SQL with arithmetic expression\n";
-    std::cout << "  SQL: " << validated.str().view() << "\n";
+    std::cout << "  SQL: " << std::string_view(validated.str()) << "\n";
   }
 
   // 测试5：无效SQL（应该触发编译错误）
@@ -51,7 +51,7 @@ void test_validated_sql() {
   }
   */
 
-  std::cout << "\nAll ValidatedSql tests passed!\n";
+  std::cout << "\nAll SqlParseResult tests passed!\n";
 }
 
 int main() {

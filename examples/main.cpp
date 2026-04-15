@@ -46,7 +46,7 @@ int main() {
   query<Goods, "SELECT * FROM goods WHERE id NOT BETWEEN 1 AND 10"_sql>();
   query<Goods, "SELECT * FROM goods WHERE title LIKE 'abc%'"_sql>();
   query<Goods, "SELECT * FROM goods WHERE id IN (1, 2, 3)"_sql>();
-  query<Goods, "SELECT * FROM goods WHERE id IN (?, ?, ?)"_sql>();
+  query<Goods, "SELECT * FROM goods WHERE id IN (?, ?, ?)"_sql>(1, 2, 3);
   query<Goods, "SELECT * FROM goods WHERE id IN (SELECT id FROM goods)"_sql>();
   query<Goods, "SELECT * FROM goods WHERE NOT (id = 1)"_sql>();
   query<Goods, "SELECT * FROM goods WHERE EXISTS (SELECT 1)"_sql>();
@@ -64,7 +64,7 @@ int main() {
   query<Goods, "SELECT UPPER(title) FROM goods"_sql>();
   query<Goods, "SELECT LOWER(title), ABS(price) FROM goods"_sql>();
   query<Goods, "SELECT 123, 'text', TRUE, FALSE, NULL FROM goods"_sql>();
-  query<Goods, "SELECT ? FROM goods"_sql>();
+  query<Goods, "SELECT ? FROM goods"_sql>("test");
   query<Goods, "SELECT id, id + 1, price * 2 FROM goods"_sql>();
   query<Goods, "SELECT g.id + g.stock FROM goods g"_sql>();
 
@@ -147,7 +147,8 @@ int main() {
   query<Goods,
         "INSERT INTO goods (title, price) VALUES ('a', 1), ('b', 2)"_sql>();
   query<Goods, "INSERT INTO goods SELECT * FROM goods WHERE id > 0"_sql>();
-  query<Goods, "INSERT INTO goods (title, price) VALUES (?, ?)"_sql>();
+  query<Goods, "INSERT INTO goods (title, price) VALUES (?, ?)"_sql>("test",
+                                                                     10.1);
   query<Goods, "INSERT INTO goods (title, price) VALUES (DEFAULT, 10.0)"_sql>();
   query<Goods,
         "INSERT INTO goods VALUES (DEFAULT, 'test', DEFAULT, 100)"_sql>();
@@ -163,7 +164,7 @@ int main() {
   query<Goods, "UPDATE goods SET price = 10.0"_sql>();
   query<Goods, "UPDATE goods SET price = 10.0 WHERE id = 1"_sql>();
   query<Goods, "UPDATE goods SET title = 'new', price = 20.0"_sql>();
-  query<Goods, "UPDATE goods SET price = ? WHERE id = ?"_sql>();
+  query<Goods, "UPDATE goods SET price = ? WHERE id = ?"_sql>(99.9, 1);
   query<Goods, "UPDATE goods SET price = DEFAULT"_sql>();
   // 表达式值测试
   query<Goods, "UPDATE goods SET price = price * 1.1"_sql>();
@@ -176,14 +177,15 @@ int main() {
   // 17. DELETE 语法测试
   query<Goods, "DELETE FROM goods"_sql>();
   query<Goods, "DELETE FROM goods WHERE id = 1"_sql>();
-  query<Goods, "DELETE FROM goods WHERE id = ?"_sql>();
+  query<Goods, "DELETE FROM goods WHERE id = ?"_sql>(1);
   query<Goods, "DELETE FROM goods WHERE id > 0 AND price < 100"_sql>();
   query<Goods, "DELETE FROM goods WHERE title LIKE '%old%'"_sql>();
   query<Goods, "DELETE FROM goods WHERE id IN (1, 2, 3)"_sql>();
   query<
       Goods,
       "DELETE FROM goods WHERE id IN (SELECT id FROM goods WHERE price > 100)"_sql>();
-  query<Goods, "DELETE FROM goods WHERE status = ? AND enabled = ?"_sql>();
+  query<Goods, "DELETE FROM goods WHERE status = ? AND enabled = ?"_sql>(
+      "active", true);
   query<Goods, "DELETE FROM goods WHERE NOT (id = 1)"_sql>();
   query<
       Goods,
