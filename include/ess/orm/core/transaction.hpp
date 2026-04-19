@@ -5,6 +5,7 @@
 #include <ess/orm/core/connection.hpp>
 #include <ess/orm/core/defines.hpp>
 #include <ess/orm/core/impl.hpp>
+#include <ess/orm/sql/concepts.hpp>
 
 namespace ess::orm::core {
 
@@ -78,7 +79,7 @@ public:
 
   Connection &connection() const { return *m_conn; }
 
-  // FIX: 使用 Transaction 自带的连接
+  // 版本1：带表类型，FixedString（不校验，向后兼容）
   template <concepts::table_type Table, meta::FixedString SQL,
             template <typename...> class Container = std::vector,
             typename ContainerSize =
@@ -91,6 +92,40 @@ public:
                                            std::forward<Args>(args)...);
   }
 
+  // 版本2：带表类型，SqlParseResult（完整校验）
+  template <concepts::table_type Table, auto ParsedSQL,
+            template <typename...> class Container = std::vector,
+            typename ContainerSize =
+                core::ContainerSize<config::default_container_size>,
+            typename... Args>
+    requires std::is_same_v<typename Table::Database, DB> &&
+             sql::valid_sql_for_table<Table, decltype(ParsedSQL),
+                                      sizeof...(Args)>
+  auto query(Args &&...args) {
+    // MARK: 带表类型查询的限制（重要更新）
+    // query<Goods, SQL>只能映射Goods表的字段，因此：
+    //
+    // 必须禁止：
+    // 1. 列别名（AS或隐式）→ 列名改变
+    // 2. 表达式列 → 列名是表达式文本
+    // 3. 函数调用 → 列名是函数文本
+    // 4. 聚合函数 → 列名是函数文本
+    // 5. 字面量 → 列名是字面量
+    // 6. JOIN查询（除非能证明只包含Goods表的列）
+    // 7. 无表限定的*在JOIN中
+    //
+    // 问题：编译期难以验证JOIN查询是否只包含主表列
+    // 选项：
+    // A. 完全禁止JOIN（简单安全）
+    // B. 允许JOIN但运行时检查（灵活但有运行时错误风险）
+    // C. 编译期分析列来源（复杂但最理想）
+    using SQLType = decltype(ParsedSQL);
+    return impl::query_impl<core::table_tag<Table>, SQLType::str(), Container,
+                            ContainerSize>(core::conn_ptr_wrapper(m_conn),
+                                           std::forward<Args>(args)...);
+  }
+
+  // 版本3：无表类型，FixedString（不校验，向后兼容）
   template <meta::FixedString SQL,
             template <typename...> class Container = std::vector,
             typename ContainerSize =
@@ -98,6 +133,20 @@ public:
             typename... Args>
   auto query(Args &&...args) {
     return impl::query_impl<core::table_tag<void>, SQL, Container,
+                            ContainerSize>(core::conn_ptr_wrapper(m_conn),
+                                           std::forward<Args>(args)...);
+  }
+
+  // 版本4：无表类型，SqlParseResult（只校验占位符数量）
+  template <auto ParsedSQL,
+            template <typename...> class Container = std::vector,
+            typename ContainerSize =
+                core::ContainerSize<config::default_container_size>,
+            typename... Args>
+    requires sql::valid_sql_basic<decltype(ParsedSQL), sizeof...(Args)>
+  auto query(Args &&...args) {
+    using SQLType = decltype(ParsedSQL);
+    return impl::query_impl<core::table_tag<void>, SQLType::str(), Container,
                             ContainerSize>(core::conn_ptr_wrapper(m_conn),
                                            std::forward<Args>(args)...);
   }

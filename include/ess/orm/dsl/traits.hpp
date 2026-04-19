@@ -1,6 +1,9 @@
 #pragma once
+#include <ess/orm/dsl/attribute.hpp>
+#include <string>
+#include <vector>
 
-namespace ess::orm::traits {
+namespace ess::orm::dsl::traits {
 template <auto> inline constexpr bool dependent_false_v = false;
 
 template <auto T> struct MemberPointerTraits {
@@ -26,10 +29,11 @@ template <typename Member, Member *Ptr> struct MemberPointerTraits<Ptr> {
 };
 
 template <auto Ptr> struct MemberAccessor {
-  using traits = ess::orm::traits::MemberPointerTraits<Ptr>;
+  using traits = MemberPointerTraits<Ptr>;
 
   static traits::member_type &get(traits::class_type &obj) {
     return obj.*(traits::pointer);
   }
 };
-} // namespace ess::orm::traits
+
+} // namespace ess::orm::dsl::traits

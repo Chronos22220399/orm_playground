@@ -73,6 +73,10 @@ template <std::size_t N> struct FixedString {
     return std::string_view{value, N - 1};
   }
 
+  std::string str() const { return std::string{value, N - 1}; }
+
+  operator std::string() const { return std::string{value, N - 1}; }
+
   constexpr bool empty() const { return N == 1; }
 };
 

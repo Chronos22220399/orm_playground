@@ -2,62 +2,9 @@
 #include <ess/orm/common/concept.hpp>
 #include <ess/orm/common/meta.hpp>
 #include <ess/orm/dsl/attribute.hpp>
-#include <ess/orm/dsl/traits.hpp>
+#include <ess/orm/dsl/field.hpp>
 
 namespace ess::orm::dsl {
-template <meta::FixedString ColumnName, // column name
-          auto Ptr = nullptr, // member pointer (can be nullptr for future
-                              // expendation)
-          typename... Attrs   // attributes for sql defination
-          >
-struct Field {
-private:
-  using member_traits = ess::orm::traits::MemberPointerTraits<Ptr>;
-
-public:
-  using pointer_type = typename member_traits::pointer_type;
-  using member_type = member_traits::member_type;
-
-  static constexpr meta::FixedString column_name = ColumnName;
-  static constexpr decltype(auto) pointer = member_traits::pointer;
-  using attributes = std::tuple<Attrs...>;
-
-private:
-  static constexpr bool _check() {
-    // 检查属性是否合法
-    attribute::check_attributes<member_type, Attrs...>();
-    return true;
-  }
-  static_assert(_check());
-  // 检查是否存在重复同类别属性
-  static_assert(!attribute::has_dup_attrs_in_tuple<attributes>,
-                "\n存在重复类型的属性： \n"
-                "1. 任意属性在一个Field中不能重复声明\n"
-                "2. DefaultValue 与 DefaultExpr 互斥\n"
-                "3. 不可存在多个 DefaultValue 或 DefaultExpr");
-};
-
-template <typename T> struct is_field : std::false_type {};
-
-template <meta::FixedString FiledName, auto Ptr, typename... Attrs>
-struct is_field<Field<FiledName, Ptr, Attrs...>> : std::true_type {};
-
-template <typename T>
-concept field_type = is_field<T>::value;
-
-template <typename LField, typename RField> constexpr bool is_same_binding() {
-  using L_traits = traits::MemberPointerTraits<LField::pointer>;
-  using R_traits = traits::MemberPointerTraits<RField::pointer>;
-
-  if constexpr (!std::is_same_v<typename L_traits::member_type,
-                                typename R_traits::member_type>) {
-    return false;
-  } else if constexpr (L_traits::is_static != R_traits::is_static) {
-    return false;
-  } else {
-    return L_traits::pointer == R_traits::pointer;
-  }
-}
 
 // TODO: 后续优化成编译期的函数从而减少模版实例化
 template <typename...> struct no_duplicate_detector;
@@ -137,5 +84,4 @@ private:
   // TODO:
   // 添加 Not Null
 };
-
 } // namespace ess::orm::dsl

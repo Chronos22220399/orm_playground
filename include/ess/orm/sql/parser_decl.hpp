@@ -70,6 +70,7 @@ struct ParseResult {
   bool is_star = false;
   bool has_aggregate = false;
   bool has_arithmetic = false;
+  bool has_literal = false; // 新增：是否有字面量
   bool has_left_column = false;
   std::size_t column_start = 0;
   std::size_t column_count = 0;

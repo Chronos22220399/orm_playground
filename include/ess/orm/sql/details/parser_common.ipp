@@ -238,6 +238,7 @@ constexpr void Parser<TokenCount>::parse_select_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
+    result.has_literal = true;  // 标记有字面量
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {
       result.semantic_result.add_placeholder(peek().pos);
@@ -649,6 +650,7 @@ constexpr void Parser<TokenCount>::parse_group_by_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
+    result.has_literal = true;  // 标记有字面量
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {
       result.semantic_result.add_placeholder(peek().pos);
@@ -788,6 +790,7 @@ constexpr void Parser<TokenCount>::parse_order_by_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
+    result.has_literal = true;  // 标记有字面量
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {
       result.semantic_result.add_placeholder(peek().pos);
@@ -884,6 +887,7 @@ constexpr void Parser<TokenCount>::parse_binary_operator_clause(
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
+    result.has_literal = true;  // 标记有字面量
     has_operand = true;
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {

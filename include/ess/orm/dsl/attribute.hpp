@@ -108,9 +108,10 @@ template <typename Attr> struct attribute_category {
   using type = Attr;
 };
 
+struct serialized_name_tag {};
+
 template <meta::FixedString Name>
 struct attribute_category<SerializedName<Name>> {
-  struct serialized_name_tag {};
   using type = serialized_name_tag;
 };
 

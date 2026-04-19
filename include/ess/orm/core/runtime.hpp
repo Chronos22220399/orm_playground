@@ -41,6 +41,23 @@ template <concepts::table_type Table, auto ParsedSQL,
           typename... Args>
   requires sql::valid_sql_for_table<Table, decltype(ParsedSQL), sizeof...(Args)>
 auto query(Args &&...args) {
+  // MARK: 带表类型查询的限制（重要更新）
+  // query<Goods, SQL>只能映射Goods表的字段，因此：
+  //
+  // 必须禁止：
+  // 1. 列别名（AS或隐式）→ 列名改变
+  // 2. 表达式列 → 列名是表达式文本
+  // 3. 函数调用 → 列名是函数文本
+  // 4. 聚合函数 → 列名是函数文本
+  // 5. 字面量 → 列名是字面量
+  // 6. JOIN查询（除非能证明只包含Goods表的列）
+  // 7. 无表限定的*在JOIN中
+  //
+  // 问题：编译期难以验证JOIN查询是否只包含主表列
+  // 选项：
+  // A. 完全禁止JOIN（简单安全）
+  // B. 允许JOIN但运行时检查（灵活但有运行时错误风险）
+  // C. 编译期分析列来源（复杂但最理想）
   using SQLType = decltype(ParsedSQL);
   return impl::query_impl<core::table_tag<Table>, SQLType::str(), Container,
                           ContainerSize>(core::conn_ptr_wrapper{nullptr},

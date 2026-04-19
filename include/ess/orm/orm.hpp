@@ -29,9 +29,12 @@
 #include <ess/orm/common/meta.hpp>
 
 // DSL (Domain Specific Language)
+#include <ess/orm/dsl/accessor.hpp>
 #include <ess/orm/dsl/attribute.hpp>
-#include <ess/orm/dsl/dsl.hpp>
+#include <ess/orm/dsl/schema.hpp>
+#include <ess/orm/dsl/schema_extractor.hpp>
 #include <ess/orm/dsl/traits.hpp>
+#include <ess/orm/dsl/visitor.hpp>
 
 // SQL processing
 #include <ess/orm/sql/lexer.hpp>
