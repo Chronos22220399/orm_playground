@@ -1,6 +1,7 @@
 #pragma once
 #include <cassert>
 #include <cstdint>
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -489,3 +490,10 @@ enum class ColumnType : std::uint8_t {
 };
 
 } // namespace ess::orm::meta
+
+template <size_t N>
+std::ostream &operator<<(std::ostream &os,
+                         const ess::orm::meta::FixedString<N> &fstr) {
+  os << fstr.data();
+  return os;
+}

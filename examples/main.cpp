@@ -1,4 +1,6 @@
+#include "./coder/coder.hpp"
 #include <ess/orm/orm.hpp>
+#include <iomanip>
 #include <iostream>
 
 using namespace std;
@@ -12,12 +14,12 @@ using namespace ess::orm::attribute;
 
 enum class GoodsStatus : int { Normal = 0, Disabled, Deleted };
 struct Goods {
-  long long id = 0;
-  std::string title;
-  float price = 0.0;
-  int stock = 0;
-  GoodsStatus status = GoodsStatus::Normal;
-  bool enabled = true;
+  long long id{};
+  std::string title{};
+  float price{0.0};
+  int stock{0};
+  GoodsStatus status{GoodsStatus::Deleted};
+  bool enabled{true};
 
   using Database = default_db;
   using Schema = dsl::Schema<
@@ -30,36 +32,28 @@ struct Goods {
       Field<"enabled", &Goods::enabled, DefaultValue<true>>>;
 };
 
-void test() {
-  using extractor = SchemaExtractor<Goods::Schema>;
-  using id_info = extractor::FieldInfo<0>;
-  cout << extractor::table_name.data() << endl;
-  cout << id_info::column_name.data() << endl;
-
-  static_assert(id_info::has_serialized_name);
-  cout << id_info::serialized_name.data() << endl;
-
-  Goods goods;
-  goods.id = -10000;
-
-  cout << FieldAccessor<Goods>::get<0>(goods) << endl;
-  FieldAccessor<Goods>::set<0>(goods, 10);
-  cout << FieldAccessor<Goods>::get<0>(goods) << endl;
-}
-
 // 函数声明
 void setup_test_tables();
 void test_queries_without_table_type();
 void test_queries_with_table_type();
 void test_table_type_restrictions();
 void test_dml_operations();
+void test_visitor();
 
 int main() {
-  Context::instance().init();
+  // Context::instance().init();
+  Goods goods{};
+  goods.id = 1000;
+  auto js = Coder::to_json(goods);
+  cout << js["1"] << endl;
 
-  test();
+  js["1"] = 0;
+  cout << goods.id << endl;
+  Coder::from_json(js, goods);
+  cout << js["1"] << endl;
 
   // setup_test_tables();
+  //
   //
   // // 查询并显示插入的数据
   // cout << "\n查询插入的测试数据:" << endl;
@@ -254,4 +248,24 @@ int main() {
 //   cout << "\n12. DELETE操作:" << endl;
 //   query<Goods, "DELETE FROM goods WHERE title = 'test'"_sql>();
 //   query<Goods, "DELETE FROM goods WHERE title = ?"_sql>("test2");
+// }
+//
+// void test_visitor() {
+//   Goods goods;
+//   goods.id = 10;
+//
+//   Visitor<Goods>{}.on(goods).foreach ([](auto info, auto &value) {
+//     cout << info.column_name << endl;
+//     if constexpr (std::is_enum_v<typename decltype(info)::member_type>) {
+//       cout << static_cast<int>(value) << endl;
+//     } else {
+//       cout << value << endl;
+//     }
+//   });
+//   cout << endl;
+//
+//   Visitor<Goods>::foreach ([](auto info) {
+//     using Info = decltype(info);
+//     cout << Info::column_name << ": " << Info::index << endl;
+//   });
 // }

@@ -38,9 +38,11 @@ template <typename Schema> class SchemaExtractor {
       return false;
 
     constexpr int idx = find_serialized_name_idx<Attrs>();
-    if constexpr (idx == -1)
+    if constexpr (idx == -1) {
       return false;
-    return !std::tuple_element_t<idx, Attrs>::name.empty();
+    } else {
+      return !std::tuple_element_t<idx, Attrs>::name.empty();
+    }
   }();
 
 public:
