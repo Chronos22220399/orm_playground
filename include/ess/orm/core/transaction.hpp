@@ -87,7 +87,7 @@ public:
             typename... Args>
     requires std::is_same_v<typename Table::Database, DB>
   auto query(Args &&...args) {
-    return impl::query_impl<core::table_tag<Table>, SQL, Container,
+    return impl::query_impl<core::table_tag<Table>, SQL, DB, Container,
                             ContainerSize>(core::conn_ptr_wrapper(m_conn),
                                            std::forward<Args>(args)...);
   }
@@ -120,9 +120,9 @@ public:
     // B. 允许JOIN但运行时检查（灵活但有运行时错误风险）
     // C. 编译期分析列来源（复杂但最理想）
     using SQLType = decltype(ParsedSQL);
-    return impl::query_impl<core::table_tag<Table>, SQLType::str(), Container,
-                            ContainerSize>(core::conn_ptr_wrapper(m_conn),
-                                           std::forward<Args>(args)...);
+    return impl::query_impl<core::table_tag<Table>, SQLType::str(), DB,
+                            Container, ContainerSize>(
+        core::conn_ptr_wrapper(m_conn), std::forward<Args>(args)...);
   }
 
   // 版本3：无表类型，FixedString（不校验，向后兼容）
@@ -132,7 +132,7 @@ public:
                 core::ContainerSize<config::default_container_size>,
             typename... Args>
   auto query(Args &&...args) {
-    return impl::query_impl<core::table_tag<void>, SQL, Container,
+    return impl::query_impl<core::table_tag<void>, SQL, DB, Container,
                             ContainerSize>(core::conn_ptr_wrapper(m_conn),
                                            std::forward<Args>(args)...);
   }
@@ -146,9 +146,9 @@ public:
     requires sql::valid_sql_basic<decltype(ParsedSQL), sizeof...(Args)>
   auto query(Args &&...args) {
     using SQLType = decltype(ParsedSQL);
-    return impl::query_impl<core::table_tag<void>, SQLType::str(), Container,
-                            ContainerSize>(core::conn_ptr_wrapper(m_conn),
-                                           std::forward<Args>(args)...);
+    return impl::query_impl<core::table_tag<void>, SQLType::str(), DB,
+                            Container, ContainerSize>(
+        core::conn_ptr_wrapper(m_conn), std::forward<Args>(args)...);
   }
 
 private:

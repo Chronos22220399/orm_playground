@@ -41,6 +41,7 @@ private:
   void bind_one(int index, int64_t param) override;
   void bind_one(int index, double param) override;
   void bind_one(int index, std::string_view param) override;
+  void bind_one(int index, const char *param) override;
   void bind_one(int index) override;
 };
 

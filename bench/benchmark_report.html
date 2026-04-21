@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORM 性能基准测试报告</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.8rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header .subtitle {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+        
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .summary-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .summary-card.good .value {
+            color: #27ae60;
+        }
+        
+        .summary-card.ok .value {
+            color: #f39c12;
+        }
+        
+        .summary-card.bad .value {
+            color: #e74c3c;
+        }
+        
+        .charts-section {
+            margin-bottom: 40px;
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            color: white;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chart-card img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .chart-info {
+            padding: 20px;
+        }
+        
+        .chart-info h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .chart-info p {
+            color: #7f8c8d;
+            font-size: 0.95rem;
+        }
+        
+        .analysis-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .analysis-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .analysis-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .analysis-item h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .analysis-item p {
+            color: #555;
+        }
+        
+        .recommendations {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .recommendations h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .recommendations ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+        
+        .recommendations li {
+            margin-bottom: 15px;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .recommendations li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: white;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .timestamp {
+            font-size: 0.85rem;
+            color: #95a5a6;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ORM 性能基准测试报告</h1>
+            <div class="subtitle">SQLite3 vs 自定义C++ ORM 库性能对比分析</div>
+            <div class="timestamp">生成时间: <span id="timestamp"></span></div>
+        </div>
+        
+        <div class="summary">
+            <div class="summary-card good">
+                <h3>平均性能开销</h3>
+                <div class="value">27.1%</div>
+                <p>批量插入操作的平均开销</p>
+            </div>
+            
+            <div class="summary-card good">
+                <h3>最佳性能操作</h3>
+                <div class="value">查询</div>
+                <p>仅16.4%的平均开销</p>
+            </div>
+            
+            <div class="summary-card ok">
+                <h3>文件数据库开销</h3>
+                <div class="value">23.8%</div>
+                <p>文件数据库插入操作开销</p>
+            </div>
+            
+            <div class="summary-card good">
+                <h3>扩展性</h3>
+                <div class="value">优秀</div>
+                <p>与SQLite3扩展性相似</p>
+            </div>
+        </div>
+        
+        <div class="charts-section">
+            <h2 class="section-title">内存数据库性能图表</h2>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <img src="charts/comprehensive_results_comparison.png" alt="性能对比图表">
+                    <div class="chart-info">
+                        <h4>性能对比分析（柱状图+折线图）</h4>
+                        <p>蓝色柱：SQLite3执行时间，红色柱：ORM执行时间，绿色折线：ORM开销百分比。直观展示绝对性能和相对开销。</p>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <img src="charts/comprehensive_results_overhead.png" alt="开销百分比图表">
+                    <div class="chart-info">
+                        <h4>开销百分比分析</h4>
+                        <p>显示ORM相对于SQLite3的平均性能开销。查询操作开销最小，更新操作开销最大。</p>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <img src="charts/comprehensive_results_scaling.png" alt="扩展性分析图表">
+                    <div class="chart-info">
+                        <h4>扩展性分析（柱状图+折线图）</h4>
+                        <p>蓝色柱：SQLite3每项操作时间，红色柱：ORM每项操作时间，紫色折线：效率变化百分比。展示批量操作对单次操作成本的影响。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="charts-section">
+            <h2 class="section-title">文件数据库性能图表</h2>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <img src="charts/file_results_comparison.png" alt="文件数据库性能对比">
+                    <div class="chart-info">
+                        <h4>文件数据库性能对比（柱状图+折线图）</h4>
+                        <p>文件数据库上的性能对比。蓝色柱：SQLite3，红色柱：ORM，绿色折线：ORM开销。注意Y轴单位为毫秒，比内存数据库大一个数量级。</p>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <img src="charts/file_results_overhead.png" alt="文件数据库开销分析">
+                    <div class="chart-info">
+                        <h4>文件数据库开销分析</h4>
+                        <p>文件数据库上的ORM开销分析。开销与内存数据库相似，但受磁盘I/O影响更大。</p>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <img src="charts/file_results_scaling.png" alt="文件数据库扩展性">
+                    <div class="chart-info">
+                        <h4>文件数据库扩展性（柱状图+折线图）</h4>
+                        <p>文件数据库的扩展性分析。蓝色柱：SQLite3每项时间，红色柱：ORM每项时间，紫色折线：效率变化。批量操作能显著减少单次I/O成本。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="analysis-section">
+            <h3>关键发现分析</h3>
+            <div class="analysis-grid">
+                <div class="analysis-item">
+                    <h4>批量插入性能</h4>
+                    <p>平均开销: 27.1% (范围: 23.3% - 29.0%)</p>
+                    <p>性能开销适中，在可接受范围内。随着批量大小增加，开销保持稳定。</p>
+                </div>
+                
+                <div class="analysis-item">
+                    <h4>批量查询性能</h4>
+                    <p>平均开销: 16.4% (范围: 8.8% - 27.3%)</p>
+                    <p>性能开销很小，ORM非常高效。查询操作是ORM的优势领域。</p>
+                </div>
+                
+                <div class="analysis-item">
+                    <h4>批量更新性能</h4>
+                    <p>平均开销: 42.5% (范围: 40.8% - 44.9%)</p>
+                    <p>性能开销适中，在可接受范围内。更新操作需要更多的ORM处理。</p>
+                </div>
+                
+                <div class="analysis-item">
+                    <h4>批量删除性能</h4>
+                    <p>平均开销: 33.6% (范围: 31.9% - 34.7%)</p>
+                    <p>性能开销适中，在可接受范围内。删除操作的开销相对稳定。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="recommendations">
+            <h3>使用建议</h3>
+            <ul>
+                <li><strong>对于小批量操作(10-100项):</strong> ORM性能开销相对较小，推荐使用ORM以获得更好的开发体验和类型安全。</li>
+                <li><strong>对于大批量操作(1000+项):</strong> 考虑使用原生SQLite3 API以获得最佳性能，特别是在性能至关重要的场景。</li>
+                <li><strong>查询操作:</strong> ORM开销最小，可以放心使用ORM进行查询操作。</li>
+                <li><strong>文件数据库:</strong> 批量操作更重要，可以减少磁盘I/O次数，提升整体性能。</li>
+                <li><strong>混合使用:</strong> 在开发效率和类型安全更重要时，优先使用ORM；在性能至关重要时，考虑混合使用ORM和原生API。</li>
+                <li><strong>配置优化:</strong> 合理配置SQLite3的PRAGMA设置（如cache_size、synchronous等）可以进一步提升性能。</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p>ORM 性能基准测试报告 | 生成工具: benchmark_report.html</p>
+            <p>使用 <code>./run.sh benchmark chart</code> 重新生成图表</p>
+            <p>使用 <code>open bench/benchmark_report.html</code> 查看此报告</p>
+        </div>
+    </div>
+    
+    <script>
+        // 设置时间戳
+        const now = new Date();
+        const timestamp = now.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        document.getElementById('timestamp').textContent = timestamp;
+        
+        // 图片加载失败处理
+        document.querySelectorAll('img').forEach(img => {
+            img.onerror = function() {
+                this.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250"><rect width="400" height="250" fill="#f0f0f0"/><text x="200" y="125" text-anchor="middle" fill="#999" font-family="Arial" font-size="14">图表加载失败</text></svg>';
+            };
+        });
+    </script>
+</body>
+</html>

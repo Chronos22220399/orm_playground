@@ -38,4 +38,13 @@ add_subdirectory(src)
 # Examples
 add_subdirectory(examples)
 
-option(BUILD_BENCHMARKS "Build benchmarks" OFF)
+# Tests
+option(BUILD_TESTS "Build tests" ON)
+if(BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
+
+option(BUILD_BENCHMARKS "Build benchmarks" ON)
+if(BUILD_BENCHMARKS)
+  add_subdirectory(bench)
+endif()

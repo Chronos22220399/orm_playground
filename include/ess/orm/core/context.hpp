@@ -6,6 +6,7 @@
 #include <ess/orm/core/connection.hpp>
 #include <ess/orm/core/connection_pool.hpp>
 #include <ess/orm/core/statement.hpp>
+#include <iostream>
 #include <mutex>
 #include <typeindex>
 #include <unordered_map>
@@ -17,7 +18,7 @@ class ESS_ORM_API Context {
   std::unordered_map<std::type_index,
                      std::shared_ptr<core::ConnectionPool<config::dialect>>>
       m_pools = {};
-  std::once_flag m_init_flag{};
+  // std::once_flag m_init_flag{};
 
   Context() {};
 
@@ -34,6 +35,14 @@ public:
   // 用户可以手动注册自己的数据库配置
   template <concepts::database_type DB> void register_db() {
     using trait = config::DatabaseTrait<DB, config::default_db_config>;
+
+    // MARK: 后续添加 debug 模式
+    // std::cout << "registering...\n";
+    // std::cout << "connection url: " << trait::connection_url << std::endl;
+    // std::cout << "connection pool size: " << trait::pool_size << std::endl;
+    // std::cout << "database type id: " << std::type_index(typeid(DB)).name()
+    //           << std::endl;
+
     auto pool = core::ConnectionPool<config::dialect>::create(
         trait::connection_url, trait::pool_size);
     m_pools[std::type_index(typeid(DB))] = std::move(pool);
@@ -41,6 +50,11 @@ public:
 
   template <concepts::database_type DB = config::default_db>
   core::ConnectionPool<config::dialect> &conn_pool() {
+
+    // MARK: 后续添加 debug 模式
+    // std::cout << "conn_pool: database type id: "
+    //           << std::type_index(typeid(DB)).name() << std::endl;
+
     auto it = m_pools.find(std::type_index(typeid(DB)));
     if (it == m_pools.end()) {
       throw std::runtime_error(

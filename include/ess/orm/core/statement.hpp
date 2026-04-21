@@ -60,6 +60,7 @@ protected:
   virtual void bind_one(int index, int64_t param) = 0;
   virtual void bind_one(int index, double param) = 0;
   virtual void bind_one(int index, std::string_view param) = 0;
+  virtual void bind_one(int index, const char *param) = 0;
   virtual void bind_one(int index) = 0;
 };
 

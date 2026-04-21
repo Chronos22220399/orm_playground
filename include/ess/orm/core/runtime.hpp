@@ -11,34 +11,46 @@ namespace ess::orm {
  * @author: Ess
  */
 // 版本1：带表类型，FixedString（不校验）
-template <concepts::table_type Table, meta::FixedString SQL,
-          template <typename...> class Container = std::vector,
-          typename ContainerSize =
-              core::ContainerSize<config::default_container_size>,
-          typename... Args>
+template <                                                //
+    concepts::table_type Table,                           //
+    meta::FixedString SQL,                                //
+    concepts::database_type DB = config::default_db,      //
+    template <typename...> class Container = std::vector, //
+    typename ContainerSize =
+        core::ContainerSize<config::default_container_size>, //
+    typename... Args                                         //
+    >
 auto query(Args &&...args) {
-  return impl::query_impl<core::table_tag<Table>, SQL, Container,
+  return impl::query_impl<core::table_tag<Table>, SQL, DB, Container,
                           ContainerSize>(core::conn_ptr_wrapper{nullptr},
                                          std::forward<Args>(args)...);
 }
 
 // 版本2：无表类型，FixedString（不校验）
-template <meta::FixedString SQL,
-          template <typename...> class Container = std::vector,
-          typename ContainerSize =
-              core::ContainerSize<config::default_container_size>,
-          typename... Args>
+template <                                                //
+    meta::FixedString SQL,                                //
+    concepts::database_type DB = config::default_db,      //
+    template <typename...> class Container = std::vector, //
+    typename ContainerSize =
+        core::ContainerSize<config::default_container_size>, //
+    typename... Args                                         //
+    >
 auto query(Args &&...args) {
-  return impl::query_impl<core::table_tag<void>, SQL, Container, ContainerSize>(
-      core::conn_ptr_wrapper{nullptr}, std::forward<Args>(args)...);
+  return impl::query_impl<core::table_tag<void>, SQL, DB, Container,
+                          ContainerSize>(core::conn_ptr_wrapper{nullptr},
+                                         std::forward<Args>(args)...);
 }
 
 // 版本3：带表类型，SqlParseResult（完整校验）
-template <concepts::table_type Table, auto ParsedSQL,
-          template <typename...> class Container = std::vector,
-          typename ContainerSize =
-              core::ContainerSize<config::default_container_size>,
-          typename... Args>
+template <                                                //
+    concepts::table_type Table,                           //
+    auto ParsedSQL,                                       //
+    concepts::database_type DB = config::default_db,      //
+    template <typename...> class Container = std::vector, //
+    typename ContainerSize =
+        core::ContainerSize<config::default_container_size>, //
+    typename... Args                                         //
+    >
   requires sql::valid_sql_for_table<Table, decltype(ParsedSQL), sizeof...(Args)>
 auto query(Args &&...args) {
   // MARK: 带表类型查询的限制（重要更新）
@@ -59,20 +71,24 @@ auto query(Args &&...args) {
   // B. 允许JOIN但运行时检查（灵活但有运行时错误风险）
   // C. 编译期分析列来源（复杂但最理想）
   using SQLType = decltype(ParsedSQL);
-  return impl::query_impl<core::table_tag<Table>, SQLType::str(), Container,
+  return impl::query_impl<core::table_tag<Table>, SQLType::str(), DB, Container,
                           ContainerSize>(core::conn_ptr_wrapper{nullptr},
                                          std::forward<Args>(args)...);
 }
 
 // 版本4：无表类型，SqlParseResult（只校验占位符数量）
-template <auto ParsedSQL, template <typename...> class Container = std::vector,
-          typename ContainerSize =
-              core::ContainerSize<config::default_container_size>,
-          typename... Args>
+template <                                                //
+    auto ParsedSQL,                                       //
+    concepts::database_type DB = config::default_db,      //
+    template <typename...> class Container = std::vector, //
+    typename ContainerSize =
+        core::ContainerSize<config::default_container_size>, //
+    typename... Args                                         //
+    >
   requires sql::valid_sql_basic<decltype(ParsedSQL), sizeof...(Args)>
 auto query(Args &&...args) {
   using SQLType = decltype(ParsedSQL);
-  return impl::query_impl<core::table_tag<void>, SQLType::str(), Container,
+  return impl::query_impl<core::table_tag<void>, SQLType::str(), DB, Container,
                           ContainerSize>(core::conn_ptr_wrapper{nullptr},
                                          std::forward<Args>(args)...);
 }
@@ -130,7 +146,7 @@ auto transaction(Func &&func) {
 
     if (is_root) {
       impl::TxState<DB>::active_mode = tx_mode;
-      loan.emplace(Context::instance().conn_pool().acquire());
+      loan.emplace(Context::instance().conn_pool<DB>().acquire());
     }
 
     if (!loan.has_value()) {

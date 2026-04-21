@@ -21,8 +21,34 @@ bool Sqlite3Statemnet::next() {
     return true;
   if (rc == SQLITE_DONE)
     return false;
-  throw std::runtime_error(get_cur_loc_info() + ": " +
-                           sqlite3_errmsg(m_db_ref));
+
+  // SQLite may return other codes that should be treated as errors
+  const char *err_msg = sqlite3_errmsg(m_db_ref);
+  std::string error_str = get_cur_loc_info() + ": ";
+
+  // Check for specific error codes
+  if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED) {
+    error_str += "database is busy/locked: ";
+  } else if (rc == SQLITE_READONLY) {
+    error_str += "database is read-only: ";
+  } else if (rc == SQLITE_IOERR) {
+    error_str += "I/O error: ";
+  } else if (rc == SQLITE_CORRUPT) {
+    error_str += "database corruption: ";
+  } else if (rc == SQLITE_CONSTRAINT) {
+    error_str += "constraint violation: ";
+  } else if (rc == SQLITE_MISMATCH) {
+    error_str += "data type mismatch: ";
+  } else if (rc == SQLITE_MISUSE) {
+    error_str += "library misuse: ";
+  } else {
+    error_str += "SQLite error (code ";
+    error_str += std::to_string(rc);
+    error_str += "): ";
+  }
+
+  error_str += (err_msg ? err_msg : "unknown error");
+  throw std::runtime_error(error_str);
 }
 
 void Sqlite3Statemnet::reset() {
@@ -123,6 +149,13 @@ void Sqlite3Statemnet::bind_one(int index, std::string_view param) {
     throw std::runtime_error(get_cur_loc_info() + sqlite3_errmsg(m_db_ref));
   }
 };
+
+void Sqlite3Statemnet::bind_one(int index, const char *param) {
+  if (sqlite3_bind_text(m_stmt.get(), index, param, -1, SQLITE_TRANSIENT) !=
+      SQLITE_OK) {
+    throw std::runtime_error(get_cur_loc_info() + sqlite3_errmsg(m_db_ref));
+  }
+}
 
 void Sqlite3Statemnet::bind_one(int index) {
   if (sqlite3_bind_null(m_stmt.get(), index) != SQLITE_OK) {

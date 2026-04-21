@@ -88,6 +88,7 @@ inline ModifyResult delete_impl(core::Connection &conn, core::Statement &stmt) {
  * no table
  */
 template <core::table_wrapper_type TableTag, meta::FixedString SQL,
+          concepts::database_type DB,
           template <typename...> class Container = std::vector,
           typename ContainerSize =
               core::ContainerSize<config::default_container_size>,
@@ -103,7 +104,7 @@ auto query_impl(core::conn_ptr_wrapper wrapper, Args &&...args) {
 
   core::Connection *conn;
   if (wrapper.m_value == nullptr) {
-    auto loan = Context::instance().conn_pool().acquire();
+    auto loan = Context::instance().conn_pool<DB>().acquire();
     conn = loan.get();
   } else {
     conn = wrapper.m_value;
@@ -112,7 +113,14 @@ auto query_impl(core::conn_ptr_wrapper wrapper, Args &&...args) {
   auto &stmt = conn->prepare_cached(SQL);
   auto guard = stmt.scope_guard();
 
-  stmt.bind_params(std::forward<Args>(args)...);
+  if (sizeof...(args) > 0) {
+    // MARK: debug 模式
+    // std::cout << "binding params: ";
+    // ((std::cout << args << " "), ...);
+    // std::cout << "\n";
+
+    stmt.bind_params(std::forward<Args>(args)...);
+  }
 
   if constexpr (query_type == TokenType::Select) {
     return select_impl<TableTag, Container, ContainerSize>(stmt);

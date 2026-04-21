@@ -4,10 +4,13 @@
 
 struct MainDB {
   static constexpr std::string_view connection_url = "./data/test.db";
+  static constexpr std::size_t pool_size = 50;
+  static constexpr std::chrono::milliseconds busy_timeout{10000};
 };
 
 struct LoggerDB {
-  static constexpr std::string_view connection_url = "./data/test1.db";
+  static constexpr std::string_view connection_url =
+      "file::memory:?cache=shared";
   static constexpr std::size_t pool_size = 4;
 };
 

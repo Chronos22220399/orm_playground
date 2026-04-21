@@ -2,6 +2,7 @@
 #include <ess/orm/orm.hpp>
 #include <iomanip>
 #include <iostream>
+#include <thread>
 
 using namespace std;
 using namespace ess::orm;
@@ -40,63 +41,52 @@ void test_table_type_restrictions();
 void test_dml_operations();
 void test_visitor();
 
+struct TestDB {
+  static constexpr std::string_view connection_url =
+      "file::memory:?cache=shared";
+  static constexpr std::size_t pool_size = 4;
+};
+
+struct Test {
+  long long id{};
+  string content{};
+
+  using Database = TestDB;
+  using Schema = dsl::Schema<             //
+      "test",                             //
+      Field<"id", &Test::id, PrimaryKey>, //
+      Field<"content", &Test::content>    //
+      >;
+};
+
 int main() {
-  // Context::instance().init();
-  Goods goods{};
-  goods.id = 1000;
-  auto js = Coder::to_json(goods);
-  cout << js["1"] << endl;
+  Context::instance().register_db<TestDB>();
+  auto ddl = Test::Schema::make_create_table_ddl();
+  cout << ddl << endl;
+  auto loan = Context::instance().conn_pool<TestDB>().acquire();
+  loan->execute_raw(ddl);
 
-  js["1"] = 0;
-  cout << goods.id << endl;
-  Coder::from_json(js, goods);
-  cout << js["1"] << endl;
+  query<Test, "insert into test values(?, ?)", TestDB>(1, "hello");
 
-  // setup_test_tables();
-  //
-  //
-  // // 查询并显示插入的数据
-  // cout << "\n查询插入的测试数据:" << endl;
-  // auto goods_data = query<Goods, "SELECT * FROM goods ORDER BY id"_sql>();
-  // for (const auto &goods : goods_data) {
-  //   cout << "  id: " << goods.id << ", title: " << goods.title
-  //        << ", price: " << goods.price << ", stock: " << goods.stock
-  //        << ", status: " << static_cast<int>(goods.status)
-  //        << ", enabled: " << (goods.enabled ? "true" : "false") << endl;
-  // }
-  //
-  // int id = 0;
-  // cin >> id;
-  // auto goods_rows =
-  //     query<"SELECT * FROM goods WHERE id >= ? ORDER BY id"_sql>(id);
-  // for (const auto &goods : goods_rows) {
-  //   int id = goods["id"];
-  //   string title = goods["title"];
-  //   float price = goods["price"];
-  //   float stock = goods["stock"];
-  //   int status = goods["status"];
-  //   bool enabled = goods["enabled"];
-  //   cout << "  id: " << id << ", title: " << title << ", price: " << price
-  //        << ", stock: " << stock << ", status: " << static_cast<int>(status)
-  //        << ", enabled: " << (enabled ? "true" : "false") << endl;
-  // }
+  auto res = query<Test, "select * from test"_sql, TestDB>();
+  for (auto &t : res) {
+    cout << t.id << " " << t.content << endl;
+  }
 
-  // cout << "\n=== 无表类型查询测试 ===" << endl;
-  // test_queries_without_table_type();
-  //
-  // cout << "\n=== 带表类型查询测试 ===" << endl;
-  // test_queries_with_table_type();
-  //
-  // cout << "\n=== 验证带表类型查询的限制 ===" << endl;
-  // test_table_type_restrictions();
-  //
-  // cout << "\n=== DML操作测试 ===" << endl;
-  // test_dml_operations();
-  //
-  // cout << "\n=== 测试完成 ===" << endl;
-  // cout << "所有有效的SQL解析测试通过！" << endl;
-  // cout << "注意：带表类型查询有严格限制，确保查询只返回表字段。" << endl;
-  //
+  // 初始化时注册 configs/ess_orm_user_config.hpp 下的数据库信息
+  // 默认下query和 conn_pool 都获取default_db
+  Context::instance().init();
+  auto res_g = query<Goods, "select * from goods limit 10 offset 0"_sql>();
+  for (auto &g : res_g) {
+    cout << g.id << " " << g.title << endl;
+  }
+
+  transaction([](auto &tx) {
+    vector<Goods> rows =
+        tx.template query<Goods, "select * from goods where id > ?"_sql>(0);
+    cout << "Row Cnt: " << rows.size() << endl;
+  });
+
   return 0;
 }
 

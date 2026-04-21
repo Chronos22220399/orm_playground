@@ -1,7 +1,5 @@
 #pragma once
 #include <ess/orm/dsl/attribute.hpp>
-#include <string>
-#include <vector>
 
 namespace ess::orm::dsl::traits {
 template <auto> inline constexpr bool dependent_false_v = false;
