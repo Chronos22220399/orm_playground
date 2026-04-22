@@ -19,9 +19,9 @@ using namespace ess::orm::sql;
 namespace fs = std::filesystem;
 
 // ==================== 数据库文件路径 ====================
-// 使用项目根目录的相对路径
-constexpr const char *SQLITE_DB_PATH = "../bench/data/sqlite_benchmark.db";
-constexpr const char *ORM_DB_PATH = "../bench/data/orm_benchmark.db";
+// 从 build/bench/ 运行时，使用 ../../bench/data
+constexpr const char *SQLITE_DB_PATH = "../../bench/data/sqlite_benchmark.db";
+constexpr const char *ORM_DB_PATH = "../../bench/data/orm_benchmark.db";
 
 // ==================== 测试数据库配置 ====================
 struct SQLiteBenchDB {
@@ -63,7 +63,7 @@ struct SQLiteUser {
 // ==================== 辅助函数 ====================
 
 // 确保数据目录存在
-void ensure_data_dir() { fs::create_directories("bench/data"); }
+void ensure_data_dir() { fs::create_directories("../../bench/data"); }
 
 // 清理旧的数据库文件
 void cleanup_old_databases() {
@@ -247,17 +247,12 @@ public:
     sqlite3_exec(db_, "COMMIT", nullptr, nullptr, nullptr);
   }
 
-  // 批量删除（删除前N条记录）
+  // 批量删除（删除前N条记录）- 使用单条 SQL
   void delete_batch(int count) {
-    sqlite3_exec(db_, "BEGIN TRANSACTION", nullptr, nullptr, nullptr);
-
-    for (int i = 1; i <= count; ++i) {
-      sqlite3_reset(delete_stmt_);
-      sqlite3_bind_int(delete_stmt_, 1, i);
-      sqlite3_step(delete_stmt_);
-    }
-
-    sqlite3_exec(db_, "COMMIT", nullptr, nullptr, nullptr);
+    char sql[100];
+    snprintf(sql, sizeof(sql), "DELETE FROM benchmark_users WHERE id <= %d",
+             count);
+    sqlite3_exec(db_, sql, nullptr, nullptr, nullptr);
   }
 
   // 清空表
@@ -307,10 +302,25 @@ public:
     });
   }
 
-  // 查询多个用户
-  std::vector<ORMUser> query_multiple_orm(int limit) {
+  // 查询多个用户 - 使用编译时 LIMIT 和 ContainerSize
+  template <size_t N> std::vector<ORMUser> query_multiple_orm() {
     return query<ORMUser, "SELECT * FROM benchmark_users LIMIT ?"_sql,
-                 ORMBenchDB>(limit);
+                 ORMBenchDB, std::vector, core::ContainerSize<N>>(
+        static_cast<int>(N));
+  }
+
+  // 便捷函数包装
+  std::vector<ORMUser> query_multiple_orm(int limit) {
+    if (limit == 10)
+      return query_multiple_orm<10>();
+    if (limit == 100)
+      return query_multiple_orm<100>();
+    if (limit == 1000)
+      return query_multiple_orm<1000>();
+    if (limit == 10000)
+      return query_multiple_orm<10000>();
+    return query<ORMUser, "SELECT * FROM benchmark_users LIMIT ?"_sql,
+                 ORMBenchDB, std::vector, core::ContainerSize<100>>(limit);
   }
 
   // 批量更新
@@ -324,14 +334,13 @@ public:
     });
   }
 
-  // 批量删除
+  // 批量删除 - 使用单条 SQL 批量删除，更高效
   void delete_batch(int count) {
-    transaction<core::Write, ORMBenchDB>([&](auto &tx) {
-      for (int i = 1; i <= count; ++i) {
-        tx.template query<ORMUser,
-                          "DELETE FROM benchmark_users WHERE id = ?"_sql>(i);
-      }
-    });
+    auto &pool = Context::instance().conn_pool<ORMBenchDB>();
+    auto conn = pool.acquire();
+    std::string sql =
+        "DELETE FROM benchmark_users WHERE id <= " + std::to_string(count);
+    conn->execute_raw(sql);
   }
 
   // 清空表
@@ -406,27 +415,21 @@ static void BM_File_ORM_InsertBatch(benchmark::State &state) {
 // SQLite3批量查询基准测试
 static void BM_File_SQLite3_QueryBatch(benchmark::State &state) {
   static bool initialized = false;
+  static FileSQLite3Benchmark bench;
+  static std::vector<SQLiteUser> test_data;
+
   if (!initialized) {
     global_setup();
+    test_data = generate_test_data(10000);
+    bench.insert_batch(test_data);
     initialized = true;
   }
 
   int query_size = state.range(0);
-  FileSQLite3Benchmark bench;
-
-  // 准备测试数据（初始化阶段，不计入测试时间）
-  state.PauseTiming();
-  auto test_data = generate_test_data(10000);
-  bench.insert_batch(test_data);
-  state.ResumeTiming();
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(bench.query_multiple(query_size));
   }
-
-  state.PauseTiming();
-  bench.clear_table();
-  state.ResumeTiming();
 
   state.SetComplexityN(query_size);
 }
@@ -434,27 +437,21 @@ static void BM_File_SQLite3_QueryBatch(benchmark::State &state) {
 // ORM批量查询基准测试
 static void BM_File_ORM_QueryBatch(benchmark::State &state) {
   static bool initialized = false;
+  static FileORMBenchmark bench;
+  static std::vector<SQLiteUser> test_data;
+
   if (!initialized) {
     global_setup();
+    test_data = generate_test_data(10000);
+    bench.insert_batch(test_data);
     initialized = true;
   }
 
   int query_size = state.range(0);
-  FileORMBenchmark bench;
-
-  // 准备测试数据（初始化阶段，不计入测试时间）
-  state.PauseTiming();
-  auto test_data = generate_test_data(10000);
-  bench.insert_batch(test_data);
-  state.ResumeTiming();
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(bench.query_multiple_orm(query_size));
   }
-
-  state.PauseTiming();
-  bench.clear_table();
-  state.ResumeTiming();
 
   state.SetComplexityN(query_size);
 }
@@ -462,32 +459,22 @@ static void BM_File_ORM_QueryBatch(benchmark::State &state) {
 // SQLite3批量更新基准测试
 static void BM_File_SQLite3_UpdateBatch(benchmark::State &state) {
   static bool initialized = false;
+  static FileSQLite3Benchmark bench;
+  static std::vector<SQLiteUser> test_data;
+
+  int batch_size = state.range(0);
+
   if (!initialized) {
     global_setup();
+    test_data = generate_test_data(batch_size);
     initialized = true;
   }
 
-  int batch_size = state.range(0);
-  FileSQLite3Benchmark bench;
-
-  // 准备测试数据（初始化阶段，不计入测试时间）
-  state.PauseTiming();
-  auto test_data = generate_test_data(batch_size);
-  bench.insert_batch(test_data);
-  state.ResumeTiming();
-
+  // 每次迭代前插入数据，然后更新
   for (auto _ : state) {
-    bench.update_batch(batch_size, "Updated_");
-    // 恢复原始数据以便下次迭代
-    state.PauseTiming();
-    bench.clear_table();
     bench.insert_batch(test_data);
-    state.ResumeTiming();
+    bench.update_batch(batch_size, "Updated_");
   }
-
-  state.PauseTiming();
-  bench.clear_table();
-  state.ResumeTiming();
 
   state.SetComplexityN(batch_size);
 }
@@ -495,32 +482,22 @@ static void BM_File_SQLite3_UpdateBatch(benchmark::State &state) {
 // ORM批量更新基准测试
 static void BM_File_ORM_UpdateBatch(benchmark::State &state) {
   static bool initialized = false;
+  static FileORMBenchmark bench;
+  static std::vector<SQLiteUser> test_data;
+
+  int batch_size = state.range(0);
+
   if (!initialized) {
     global_setup();
+    test_data = generate_test_data(batch_size);
     initialized = true;
   }
 
-  int batch_size = state.range(0);
-  FileORMBenchmark bench;
-
-  // 准备测试数据（初始化阶段，不计入测试时间）
-  state.PauseTiming();
-  auto test_data = generate_test_data(batch_size);
-  bench.insert_batch(test_data);
-  state.ResumeTiming();
-
+  // 每次迭代前插入数据，然后更新
   for (auto _ : state) {
-    bench.update_batch(batch_size, "Updated_");
-    // 恢复原始数据以便下次迭代
-    state.PauseTiming();
-    bench.clear_table();
     bench.insert_batch(test_data);
-    state.ResumeTiming();
+    bench.update_batch(batch_size, "Updated_");
   }
-
-  state.PauseTiming();
-  bench.clear_table();
-  state.ResumeTiming();
 
   state.SetComplexityN(batch_size);
 }
@@ -528,28 +505,22 @@ static void BM_File_ORM_UpdateBatch(benchmark::State &state) {
 // SQLite3批量删除基准测试
 static void BM_File_SQLite3_DeleteBatch(benchmark::State &state) {
   static bool initialized = false;
+  static FileSQLite3Benchmark bench;
+  static std::vector<SQLiteUser> test_data;
+
+  int batch_size = state.range(0);
+
   if (!initialized) {
     global_setup();
+    test_data = generate_test_data(batch_size);
     initialized = true;
   }
 
-  int batch_size = state.range(0);
-  FileSQLite3Benchmark bench;
-
+  // 每次迭代前插入数据，然后删除
   for (auto _ : state) {
-    // 准备测试数据（初始化阶段，不计入测试时间）
-    state.PauseTiming();
-    auto test_data = generate_test_data(batch_size);
     bench.insert_batch(test_data);
-    state.ResumeTiming();
-
-    // 执行删除
     bench.delete_batch(batch_size);
   }
-
-  state.PauseTiming();
-  bench.clear_table();
-  state.ResumeTiming();
 
   state.SetComplexityN(batch_size);
 }
@@ -557,28 +528,22 @@ static void BM_File_SQLite3_DeleteBatch(benchmark::State &state) {
 // ORM批量删除基准测试
 static void BM_File_ORM_DeleteBatch(benchmark::State &state) {
   static bool initialized = false;
+  static FileORMBenchmark bench;
+  static std::vector<SQLiteUser> test_data;
+
+  int batch_size = state.range(0);
+
   if (!initialized) {
     global_setup();
+    test_data = generate_test_data(batch_size);
     initialized = true;
   }
 
-  int batch_size = state.range(0);
-  FileORMBenchmark bench;
-
+  // 每次迭代前插入数据，然后删除
   for (auto _ : state) {
-    // 准备测试数据（初始化阶段，不计入测试时间）
-    state.PauseTiming();
-    auto test_data = generate_test_data(batch_size);
     bench.insert_batch(test_data);
-    state.ResumeTiming();
-
-    // 执行删除
     bench.delete_batch(batch_size);
   }
-
-  state.PauseTiming();
-  bench.clear_table();
-  state.ResumeTiming();
 
   state.SetComplexityN(batch_size);
 }

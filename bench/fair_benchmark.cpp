@@ -18,7 +18,7 @@ using namespace ess::orm::sql;
 // ==================== 测试数据库配置 ====================
 struct BenchDB {
   static constexpr std::string_view connection_url =
-      "file::memory:?cache=shared";
+      "file:memory_1?mode=memory&cache=shared";
   static constexpr std::size_t pool_size = 10; // 使用单个连接，更公平
 };
 
@@ -101,7 +101,7 @@ class OptimizedSQLite3Benchmark {
 public:
   OptimizedSQLite3Benchmark() {
     // 打开内存数据库
-    int rc = sqlite3_open("file::memory:?cache=shared", &db_);
+    int rc = sqlite3_open("file:memory_1?mode=memory&cache=shared", &db_);
     if (rc != SQLITE_OK) {
       throw std::runtime_error("无法打开SQLite3数据库");
     }
@@ -265,6 +265,17 @@ public:
         id);
   }
 
+  // 批量插入（使用事务）
+  void insert_batch(const std::vector<SQLiteUser> &users) {
+    transaction<core::Write, BenchDB>([&](auto &tx) {
+      for (const auto &user : users) {
+        tx.template query<ORMUser, "INSERT INTO benchmark_orm_users (name, "
+                                   "age, score, active) VALUES (?, ?, ?, ?)">(
+            user.name, user.age, user.score, user.active);
+      }
+    });
+  }
+
   // 清空表
   void clear_table() {
     auto &pool = Context::instance().conn_pool<BenchDB>();
@@ -348,7 +359,7 @@ static void BM_ORM_QuerySingle(benchmark::State &state) {
 
   for (auto _ : state) {
     int id = id_dist(rng);
-    benchmark::DoNotOptimize(bench.query_single(id));
+    benchmark::DoNotOptimize(bench.query_single_orm(id));
   }
 
   bench.clear_table();

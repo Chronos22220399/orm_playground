@@ -18,7 +18,7 @@ using namespace ess::orm::sql;
 // ==================== 测试数据库配置 ====================
 struct BenchDB {
   static constexpr std::string_view connection_url =
-      "file::memory:?cache=shared";
+      "file:memory_1?mode=memory&cache=shared";
   static constexpr std::size_t pool_size = 1;
 };
 
@@ -91,7 +91,7 @@ class SimpleSQLite3Benchmark {
 
 public:
   SimpleSQLite3Benchmark() {
-    int rc = sqlite3_open("file::memory:?cache=shared", &db_);
+    int rc = sqlite3_open("file:memory_1?mode=memory&cache=shared", &db_);
     if (rc != SQLITE_OK) {
       throw std::runtime_error("无法打开SQLite3数据库");
     }
@@ -308,30 +308,25 @@ public:
     return results[0];
   }
 
-  // 查询多个用户
-  std::vector<ORMUser> query_multiple_orm(int limit) {
+  // 查询多个用户 - 使用编译时 LIMIT 和 ContainerSize
+  template <size_t N> std::vector<ORMUser> query_multiple_orm() {
     return query<ORMUser, "SELECT * FROM benchmark_orm_users LIMIT ?"_sql,
-                 BenchDB>(limit);
+                 BenchDB, std::vector, core::ContainerSize<N>>(
+        static_cast<int>(N));
   }
 
-  // 查询多个用户
-  std::vector<SQLiteUser> query_multiple(int limit) {
-    std::vector<ORMUser> orm_results =
-        query<ORMUser, "SELECT * FROM benchmark_orm_users LIMIT ?"_sql,
-              BenchDB>(limit);
-    // return orm_results;
-
-    std::vector<SQLiteUser> users;
-    users.reserve(orm_results.size());
-    for (const auto &orm_user : orm_results) {
-      users.push_back(SQLiteUser{.id = orm_user.id,
-                                 .name = orm_user.name,
-                                 .age = orm_user.age,
-                                 .score = orm_user.score,
-                                 .active = orm_user.active});
-    }
-
-    return users;
+  // 便捷函数包装
+  std::vector<ORMUser> query_multiple_orm(int limit) {
+    if (limit == 1)
+      return query_multiple_orm<1>();
+    if (limit == 10)
+      return query_multiple_orm<10>();
+    if (limit == 100)
+      return query_multiple_orm<100>();
+    if (limit == 1000)
+      return query_multiple_orm<1000>();
+    return query<ORMUser, "SELECT * FROM benchmark_orm_users LIMIT ?"_sql,
+                 BenchDB, std::vector, core::ContainerSize<100>>(limit);
   }
 
   // 更新用户

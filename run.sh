@@ -77,10 +77,10 @@ case "$1" in
                 ./${BUILD_DIR}/bench/fair_benchmark
                 echo ""
                 echo "3. 全面基准测试 (不同数据规模)"
-                ./${BUILD_DIR}/bench/comprehensive_benchmark --benchmark_out=${BUILD_DIR}/bench/comprehensive_results.json --benchmark_out_format=json
+                ./${BUILD_DIR}/bench/comprehensive_benchmark --benchmark_out=bench/comprehensive_results.json --benchmark_out_format=json
                 echo ""
                 echo "4. 文件数据库基准测试"
-                ./${BUILD_DIR}/bench/file_benchmark --benchmark_out=${BUILD_DIR}/bench/file_results.json --benchmark_out_format=json
+                ./${BUILD_DIR}/bench/file_benchmark --benchmark_out=bench/file_results.json --benchmark_out_format=json
                 echo ""
                 echo "✅ 所有基准测试完成"
                 echo "📈 运行分析脚本查看结果:"
@@ -97,13 +97,13 @@ case "$1" in
                 ;;
             comprehensive|comp)
                 echo "📊 运行全面基准测试..."
-                ./${BUILD_DIR}/bench/comprehensive_benchmark --benchmark_out=${BUILD_DIR}/bench/comprehensive_results.json --benchmark_out_format=json
+                ./${BUILD_DIR}/bench/comprehensive_benchmark --benchmark_out=bench/comprehensive_results.json --benchmark_out_format=json
                 echo "📈 运行分析脚本查看结果:"
                 echo "   python3 bench/analyze_comprehensive.py"
                 ;;
             file)
                 echo "📊 运行文件数据库基准测试..."
-                ./${BUILD_DIR}/bench/file_benchmark --benchmark_out=${BUILD_DIR}/bench/file_results.json --benchmark_out_format=json
+                ./${BUILD_DIR}/bench/file_benchmark --benchmark_out=bench/file_results.json --benchmark_out_format=json
                 echo "📈 运行分析脚本查看结果:"
                 echo "   python3 bench/analyze_file_results.py"
                 ;;

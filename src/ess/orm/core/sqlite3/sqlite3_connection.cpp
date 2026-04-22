@@ -11,7 +11,8 @@ Sqlite3Connection::Sqlite3Connection(std::string_view connection_url)
     : Connection() {
   sqlite3 *raw_db = nullptr;
   if (sqlite3_open_v2(connection_url.data(), &raw_db,
-                      SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX,
+                      SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE |
+                          SQLITE_OPEN_URI | SQLITE_OPEN_NOMUTEX,
                       nullptr) != SQLITE_OK) {
     throw std::runtime_error(
         get_cur_loc_info() + std::string(": Can't open the database: ") +

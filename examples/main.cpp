@@ -43,7 +43,7 @@ void test_visitor();
 
 struct TestDB {
   static constexpr std::string_view connection_url =
-      "file::memory:?cache=shared";
+      "file:memory?mode=memory&cache=shared";
   static constexpr std::size_t pool_size = 4;
 };
 

@@ -18,7 +18,7 @@ using namespace ess::orm::sql;
 // ==================== 测试数据库配置 ====================
 struct BenchDB {
   static constexpr std::string_view connection_url =
-      "file::memory:?cache=shared";
+      "file:memory_1?mode=memory&cache=shared";
   static constexpr std::size_t pool_size = 10;
 };
 
@@ -96,7 +96,7 @@ class OptimizedSQLite3Benchmark {
 
 public:
   OptimizedSQLite3Benchmark() {
-    int rc = sqlite3_open("file::memory:?cache=shared", &db_);
+    int rc = sqlite3_open("file:memory_1?mode=memory&cache=shared", &db_);
     if (rc != SQLITE_OK) {
       throw std::runtime_error("无法打开SQLite3数据库");
     }
@@ -213,17 +213,12 @@ public:
     sqlite3_exec(db_, "COMMIT", nullptr, nullptr, nullptr);
   }
 
-  // 批量删除（删除前N条记录）
+  // 批量删除（删除前N条记录）- 使用单条 SQL
   void delete_batch(int count) {
-    sqlite3_exec(db_, "BEGIN TRANSACTION", nullptr, nullptr, nullptr);
-
-    for (int i = 1; i <= count; ++i) {
-      sqlite3_reset(delete_stmt_);
-      sqlite3_bind_int(delete_stmt_, 1, i);
-      sqlite3_step(delete_stmt_);
-    }
-
-    sqlite3_exec(db_, "COMMIT", nullptr, nullptr, nullptr);
+    char sql[100];
+    snprintf(sql, sizeof(sql),
+             "DELETE FROM benchmark_sqlite_users WHERE id <= %d", count);
+    sqlite3_exec(db_, sql, nullptr, nullptr, nullptr);
   }
 
   // 清空表
@@ -273,10 +268,25 @@ public:
     });
   }
 
-  // 查询多个用户
-  std::vector<ORMUser> query_multiple_orm(int limit) {
+  // 查询多个用户 - 使用编译时 LIMIT 和 ContainerSize
+  template <size_t N> std::vector<ORMUser> query_multiple_orm() {
     return query<ORMUser, "SELECT * FROM benchmark_orm_users LIMIT ?"_sql,
-                 BenchDB>(limit);
+                 BenchDB, std::vector, core::ContainerSize<N>>(
+        static_cast<int>(N));
+  }
+
+  // 便捷函数包装
+  std::vector<ORMUser> query_multiple_orm(int limit) {
+    if (limit == 10)
+      return query_multiple_orm<10>();
+    if (limit == 100)
+      return query_multiple_orm<100>();
+    if (limit == 1000)
+      return query_multiple_orm<1000>();
+    if (limit == 10000)
+      return query_multiple_orm<10000>();
+    return query<ORMUser, "SELECT * FROM benchmark_orm_users LIMIT ?"_sql,
+                 BenchDB, std::vector, core::ContainerSize<100>>(limit);
   }
 
   // 批量更新
@@ -291,15 +301,13 @@ public:
     });
   }
 
-  // 批量删除
+  // 批量删除 - 使用单条 SQL 批量删除，更高效
   void delete_batch(int count) {
-    transaction<core::Write, BenchDB>([&](auto &tx) {
-      for (int i = 1; i <= count; ++i) {
-        tx.template query<ORMUser,
-                          "DELETE FROM benchmark_orm_users WHERE id = ?"_sql>(
-            i);
-      }
-    });
+    auto &pool = Context::instance().conn_pool<BenchDB>();
+    auto conn = pool.acquire();
+    std::string sql =
+        "DELETE FROM benchmark_orm_users WHERE id <= " + std::to_string(count);
+    conn->execute_raw(sql);
   }
 
   // 清空表

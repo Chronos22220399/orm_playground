@@ -8,9 +8,7 @@
 
 namespace ess::orm::impl {
 template <core::table_wrapper_type TableTag,
-          template <typename...> class Container,
-          typename ContainerSize =
-              core::ContainerSize<config::default_container_size>>
+          template <typename...> class Container, typename ContainerSize>
 inline auto select_impl(core::Statement &stmt) {
 
   if constexpr (std::is_same_v<typename TableTag::type, void>) {
@@ -90,9 +88,7 @@ inline ModifyResult delete_impl(core::Connection &conn, core::Statement &stmt) {
 template <core::table_wrapper_type TableTag, meta::FixedString SQL,
           concepts::database_type DB,
           template <typename...> class Container = std::vector,
-          typename ContainerSize =
-              core::ContainerSize<config::default_container_size>,
-          typename... Args>
+          typename ContainerSize, typename... Args>
 auto query_impl(core::conn_ptr_wrapper wrapper, Args &&...args) {
   using namespace ess::orm::core;
   using namespace ess::orm::sql;
