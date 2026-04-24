@@ -74,6 +74,7 @@ template <typename Table>
 concept table_type = requires {
   typename Table::Database;
   typename Table::Schema;
+  sizeof(typename Table::Schema);
 };
 
 /*

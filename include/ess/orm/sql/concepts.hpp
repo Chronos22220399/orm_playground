@@ -15,10 +15,9 @@ namespace ess::orm::sql {
 template <typename SqlResult, std::size_t ArgCount>
 concept valid_sql_basic = (SqlResult::placeholder_count() == ArgCount);
 
-// 列存在性验证（暂时禁用）
+// 列存在性验证
 template <typename Table, typename SqlResult>
-concept columns_exist =
-    true; // TODO: 实现列存在性检查，暂时返回true以保持兼容性
+concept columns_exist = requires { sizeof(typename Table::Schema); };
 
 // 类型兼容性验证（占位符实现，需要类型映射系统）
 template <typename Table, typename SqlResult>

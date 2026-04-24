@@ -258,6 +258,8 @@ cython_debug/
 
 # SQLite
 *.db
+*.db-shm
+*.db-wal
 *.db-journal
 *-journal
 file:*

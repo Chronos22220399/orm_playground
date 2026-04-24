@@ -188,6 +188,9 @@ constexpr void check_attributes() {
 template <typename Tuple>
 constexpr bool has_dup_attrs_in_tuple = detail::has_dup_attrs_in_tuple<Tuple>();
 
+// ************************
+//       dsl 生成
+// ************************
 // 萃取出生成 sql ddl 所需字符串
 struct PlaceHolder {};
 

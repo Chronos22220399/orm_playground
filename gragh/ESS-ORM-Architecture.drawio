@@ -1,0 +1,100 @@
+<mxfile host="Electron" modified="2026-04-22T13:42:45.243Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.4.0 Chrome/120.0.6099.109 Electron/28.1.0 Safari/537.36" version="24.4.0" etag="JWbsyPV0sNvNo87aDvl7" type="device">
+  <diagram name="ESS-ORM Architecture" id="architecture">
+    <mxGraphModel dx="1363" dy="1039" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="user_layer" value="用户层" style="swimlane;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=14;fontStyle=1;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="1" vertex="1">
+          <mxGeometry x="360" y="20" width="520" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="query_fn" value="query()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="user_layer" vertex="1">
+          <mxGeometry x="30" y="50" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="transaction_fn" value="transaction()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="user_layer" vertex="1">
+          <mxGeometry x="140" y="50" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="schema_def" value="Schema Definition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="user_layer" vertex="1">
+          <mxGeometry x="250" y="50" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="row_usage" value="Schema Extractor/Visitor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="user_layer" vertex="1">
+          <mxGeometry x="370" y="50" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="core_layer" value="核心层" style="swimlane;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=14;fontStyle=1;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="1" vertex="1">
+          <mxGeometry x="360" y="160" width="520" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="context" value="Context" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="core_layer" vertex="1">
+          <mxGeometry x="30" y="40" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="db_config" value="Database Config" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="core_layer" vertex="1">
+          <mxGeometry x="140" y="40" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tx_manager" value="Transaction Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="core_layer" vertex="1">
+          <mxGeometry x="250" y="40" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="multi_mode" value="Multi-mode Usage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="core_layer" vertex="1">
+          <mxGeometry x="400" y="40" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sql_layer" value="SQL解析模块（独立模块，可单独使用）" style="swimlane;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=14;fontStyle=1;labelBackgroundColor=none;fontColor=#393C56;" parent="1" vertex="1">
+          <mxGeometry x="360" y="290" width="520" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="lexer" value="Lexer&#xa;(constexpr)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" parent="sql_layer" vertex="1">
+          <mxGeometry x="30" y="40" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="parser" value="Parser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" parent="sql_layer" vertex="1">
+          <mxGeometry x="150" y="40" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="validator" value="Validator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" parent="sql_layer" vertex="1">
+          <mxGeometry x="260" y="40" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="cache" value="StatementCache" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" parent="sql_layer" vertex="1">
+          <mxGeometry x="390" y="40" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="result_layer" value="结果映射模块" style="swimlane;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=14;fontStyle=1;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="1" vertex="1">
+          <mxGeometry x="360" y="420" width="520" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="result_mapper" value="ResultSetMapper&#xa;(Static)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="result_layer" vertex="1">
+          <mxGeometry x="30" y="40" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="schema_ext" value="ResultSetMapper&lt;div&gt;(Dynamic)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="result_layer" vertex="1">
+          <mxGeometry x="210" y="40" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="row" value="Row&#xa;(Dynamic)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;container=0;" parent="result_layer" vertex="1">
+          <mxGeometry x="390" y="40" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="db_layer" value="数据库驱动层" style="swimlane;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=14;fontStyle=1;labelBackgroundColor=none;fontColor=#393C56;" parent="1" vertex="1">
+          <mxGeometry x="360" y="550" width="520" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="conn_pool" value="ConnectionPool&#xa;(Loan Mode)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" parent="db_layer" vertex="1">
+          <mxGeometry x="30" y="40" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dialect" value="Dialect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" parent="db_layer" vertex="1">
+          <mxGeometry x="220" y="40" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sqlit3" value="SQLite3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" parent="db_layer" vertex="1">
+          <mxGeometry x="400" y="40" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bo-3_DH-xWBbYBNQHY8x-2" value="Connection&lt;br&gt;(Based On Dialect)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" vertex="1" parent="db_layer">
+          <mxGeometry x="30" y="80" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bo-3_DH-xWBbYBNQHY8x-3" value="Connection Factory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" vertex="1" parent="db_layer">
+          <mxGeometry x="210" y="80" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bo-3_DH-xWBbYBNQHY8x-4" value="Statement" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2CC8F;strokeColor=#E07A5F;fontSize=11;labelBackgroundColor=none;fontColor=#393C56;" vertex="1" parent="db_layer">
+          <mxGeometry x="390" y="80" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitPerimeter=0;entryX=0.5;entryY=0;entryPerimeter=0;strokeWidth=2;labelBackgroundColor=none;strokeColor=#E07A5F;fontColor=default;" parent="1" source="user_layer" target="core_layer" edge="1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitPerimeter=0;entryX=0.5;entryY=0;entryPerimeter=0;strokeWidth=2;labelBackgroundColor=none;strokeColor=#E07A5F;fontColor=default;" parent="1" source="core_layer" target="sql_layer" edge="1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitPerimeter=0;entryX=0.5;entryY=0;entryPerimeter=0;strokeWidth=2;labelBackgroundColor=none;strokeColor=#E07A5F;fontColor=default;" parent="1" source="sql_layer" target="result_layer" edge="1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitPerimeter=0;entryX=0.5;entryY=0;entryPerimeter=0;strokeWidth=2;labelBackgroundColor=none;strokeColor=#E07A5F;fontColor=default;" parent="1" source="result_layer" target="db_layer" edge="1">
+          <mxGeometry as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

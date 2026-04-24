@@ -101,6 +101,11 @@ std::string Sqlite3Statemnet::column_name(int index) const {
   return sqlite3_column_name(m_stmt.get(), index);
 };
 
+std::string_view Sqlite3Statemnet::column_name_view(int index) const {
+  assert(index >= 0 && index < column_count());
+  return sqlite3_column_name(m_stmt.get(), index);
+};
+
 meta::ColumnType Sqlite3Statemnet::column_type(int index) const {
   int type = sqlite3_column_type(m_stmt.get(), index);
   switch (type) {

@@ -68,83 +68,64 @@ case "$1" in
         
         case "$BENCH_TYPE" in
             all)
-                echo "📊 运行所有基准测试..."
-                echo "=========================================="
-                echo "1. 基础基准测试 (原始版本)"
-                ./${BUILD_DIR}/bench/sqlite_vs_orm_benchmark
+                echo "📊 1/2 全面基准测试 (batch 10/100/1000/10000)..."
+                ./${BUILD_DIR}/bench/comprehensive_benchmark --benchmark_out=bench/data/comprehensive_results.json --benchmark_out_format=json
                 echo ""
-                echo "2. 公平基准测试 (优化对比)"
-                ./${BUILD_DIR}/bench/fair_benchmark
+                echo "📊 2/2 文件数据库基准测试..."
+                ./${BUILD_DIR}/bench/file_benchmark --benchmark_out=bench/data/file_benchmark.json --benchmark_out_format=json
                 echo ""
-                echo "3. 全面基准测试 (不同数据规模)"
-                ./${BUILD_DIR}/bench/comprehensive_benchmark --benchmark_out=bench/comprehensive_results.json --benchmark_out_format=json
+                echo "✅ 基准测试完成"
                 echo ""
-                echo "4. 文件数据库基准测试"
-                ./${BUILD_DIR}/bench/file_benchmark --benchmark_out=bench/file_results.json --benchmark_out_format=json
-                echo ""
-                echo "✅ 所有基准测试完成"
-                echo "📈 运行分析脚本查看结果:"
-                echo "   python3 bench/analyze_comprehensive.py"
-                echo "   python3 bench/analyze_file_results.py"
-                ;;
-            basic)
-                echo "📊 运行基础基准测试..."
-                ./${BUILD_DIR}/bench/sqlite_vs_orm_benchmark
-                ;;
-            fair)
-                echo "📊 运行公平基准测试..."
-                ./${BUILD_DIR}/bench/fair_benchmark
+                echo "📈 生成图表和数据..."
+                python3 bench/scripts/chart_visualization.py
+                python3 bench/scripts/export_paper_data.py
                 ;;
             comprehensive|comp)
-                echo "📊 运行全面基准测试..."
-                ./${BUILD_DIR}/bench/comprehensive_benchmark --benchmark_out=bench/comprehensive_results.json --benchmark_out_format=json
-                echo "📈 运行分析脚本查看结果:"
-                echo "   python3 bench/analyze_comprehensive.py"
+                echo "📊 运行全面基准测试 (batch 10/100/1000/10000)..."
+                ./${BUILD_DIR}/bench/comprehensive_benchmark --benchmark_out=bench/data/comprehensive_results.json --benchmark_out_format=json
+                python3 bench/scripts/chart_visualization.py
+                python3 bench/scripts/export_paper_data.py
+                echo ""
+                echo "📈 数据已保存到 bench/data/ 和 bench/charts/"
                 ;;
             file)
                 echo "📊 运行文件数据库基准测试..."
-                ./${BUILD_DIR}/bench/file_benchmark --benchmark_out=bench/file_results.json --benchmark_out_format=json
-                echo "📈 运行分析脚本查看结果:"
-                echo "   python3 bench/analyze_file_results.py"
+                ./${BUILD_DIR}/bench/file_benchmark --benchmark_out=bench/data/file_benchmark.json --benchmark_out_format=json
+                python3 bench/scripts/chart_visualization.py
                 ;;
-            analyze|a)
-                echo "📈 分析基准测试结果..."
-                if [ -f "${BUILD_DIR}/bench/comprehensive_results.json" ]; then
-                    echo "分析全面基准测试结果:"
-                    python3 bench/analyze_comprehensive.py
-                    echo ""
-                fi
-                if [ -f "${BUILD_DIR}/bench/file_results.json" ]; then
-                    echo "分析文件数据库基准测试结果:"
-                    python3 bench/analyze_file_results.py
-                fi
+analyze|a)
+                echo "📈 分析结果 + 生成图表 + 导出CSV..."
+                source venv/bin/activate 2>/dev/null || true
+                python3 bench/scripts/export_paper_data.py
+                python3 bench/scripts/chart_visualization.py
+                echo ""
+                echo "✅ 完成！"
+                echo "   图表: bench/charts/*.png"
+                echo "   数据: bench/data/*.csv"
                 ;;
             chart|c)
-                echo "📊 生成图表可视化..."
-                if [ ! -f "venv/bin/activate" ]; then
-                    echo "创建Python虚拟环境..."
-                    python3 -m venv venv
-                fi
-                source venv/bin/activate
-                python3 bench/chart_visualization.py
+                echo "📊 生成图表..."
+                source venv/bin/activate 2>/dev/null || true
+                python3 bench/scripts/chart_visualization.py
                 echo ""
-                echo "📈 图表已生成到: bench/charts/"
-                echo "📄 生成HTML报告..."
-                echo "✅ HTML报告已生成: bench/benchmark_report.html"
-                echo "使用以下命令查看:"
-                echo "  open bench/benchmark_report.html  # 在浏览器中打开报告"
-                echo "  open bench/charts/  # 在Finder中打开图表目录"
+                echo "📈 图表已保存到 bench/charts/"
+                ;;
+            export|export_data)
+                echo "📊 导出CSV数据..."
+                source venv/bin/activate 2>/dev/null || true
+                python3 bench/scripts/export_paper_data.py
+                echo ""
+                echo "📈 数据已保存到 bench/data/*.csv"
                 ;;
             *)
                 echo "❌ 未知基准测试类型: $BENCH_TYPE"
                 echo "可用类型:"
-                echo "  all           所有基准测试"
-                echo "  basic         基础基准测试 (原始版本)"
-                echo "  fair          公平基准测试 (优化对比)"
-                echo "  comprehensive 全面基准测试 (不同数据规模)"
-                echo "  file          文件数据库基准测试"
-                echo "  analyze       分析已有结果"
-                echo "  chart         生成图表可视化"
+                echo "  all            运行全面+文件基准测试+图表+CSV (推荐)"
+                echo "  comp|comprehensive  内存数据库全面基准测试"
+                echo "  file           文件数据库基准测试"
+                echo "  chart          仅生成图表"
+                echo "  analyze        分析+图表+CSV"
+                echo "  export         仅导出CSV"
                 exit 1
                 ;;
         esac
@@ -160,7 +141,7 @@ case "$1" in
         echo "  build     仅编译"
         echo "  example|e [schema|orm]  运行特定示例"
     echo "  benchmark|bench|b [类型]  运行基准测试"
-    echo "    类型: all, basic, fair, comprehensive, file, analyze, chart"
+    echo "    类型: all (推荐), comp, chart, analyze, export"
         echo "  help|h    显示帮助"
         exit 0
         ;;

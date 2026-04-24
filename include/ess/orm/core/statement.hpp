@@ -27,6 +27,7 @@ public:
   virtual std::string column_text(int index) const = 0;
   virtual bool column_is_null(int index) const = 0;
   virtual std::string column_name(int index) const = 0;
+  virtual std::string_view column_name_view(int index) const = 0;
   virtual meta::ColumnType column_type(int index) const = 0;
 
   void bind_params(auto &&...args) {
