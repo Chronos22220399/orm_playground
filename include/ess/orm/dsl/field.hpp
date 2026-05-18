@@ -1,11 +1,9 @@
-#pragma once
 #include <ess/orm/dsl/traits.hpp>
 
 namespace ess::orm::dsl {
-template <meta::FixedString ColumnName, // column name
-          auto Ptr = nullptr, // member pointer (can be nullptr for future
-                              // expendation)
-          typename... Attrs   // attributes for sql defination
+template <meta::FixedString ColumnName, //
+          auto Ptr = nullptr,           //
+          typename... Attrs             // attributes for sql defination
           >
 struct Field {
 private:
@@ -21,9 +19,12 @@ public:
   using attributes = std::tuple<Attrs...>;
 
 private:
-  // 检查属性是否合法
-  static_assert((attribute::check_attributes<member_type, Attrs...>(), true),
-                "attribute validation failed");
+  static constexpr bool _check() {
+    // 检查属性是否合法
+    attribute::check_attributes<member_type, Attrs...>();
+    return true;
+  }
+  static_assert(_check());
   // 检查是否存在重复同类别属性
   static_assert(!attribute::has_dup_attrs_in_tuple<attributes>,
                 "\n存在重复类型的属性： \n"

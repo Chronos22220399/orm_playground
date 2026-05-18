@@ -12,7 +12,8 @@ template <typename...> struct no_duplicate_detector;
 template <> struct no_duplicate_detector<> : std::true_type {};
 
 template <typename Field>
-struct no_duplicate_detector<Field> : std::true_type {};
+struct no_duplicate_detector<Field>
+    : std::bool_constant<(Field::column_name.size(), true)> {};
 
 template <typename First, typename... Rest>
 struct no_duplicate_detector<First, Rest...>
@@ -32,15 +33,13 @@ template <typename... MemPtrs> struct GlobalPrimaryKey {
 
 // Schema
 template <meta::FixedString TableName, field_type... Fields>
-// requires(no_duplicated_key_field_words<Fields...>)
-struct Schema {
+  requires(no_duplicated_key_field_words<Fields...>) // 用 requires 是 Fields
+                                                     // 强制实例化
+                                                     struct Schema {
   static constexpr meta::FixedString table_name = TableName;
   using fields = std::tuple<Fields...>;
 
 private:
-  // Force instantiation of all Field types to trigger static_assert checks
-  static_assert(((void)sizeof(Fields), ..., true));
-
   // TODO: 将 make_create_table_ddl 拆分出来，让 Schema 仅作为元数据载体
   template <typename Field>
   [[gnu::noinline]] static std::string make_col_def() {

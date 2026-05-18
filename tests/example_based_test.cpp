@@ -12,6 +12,7 @@ using namespace ess::orm::meta;
 using namespace ess::orm::sql;
 
 // ==================== 测试数据库配置 ====================
+
 struct TestDB {
   static constexpr std::string_view connection_url =
       "file::memory:?cache=shared";
