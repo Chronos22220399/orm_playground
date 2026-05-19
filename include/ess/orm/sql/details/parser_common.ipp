@@ -52,7 +52,7 @@ constexpr bool Parser<TokenCount>::match(TokenType type, ParseResult &result,
 template <std::size_t TokenCount>
 constexpr void Parser<TokenCount>::parse_columns(ParseResult &result) {
   bool first_vis = true;
-  
+
   while (true) {
     // Check if we have a select item
     if (peek().type == TokenType::Star) {
@@ -63,26 +63,27 @@ constexpr void Parser<TokenCount>::parse_columns(ParseResult &result) {
       col.len = peek().len;
       result.add_column(col);
       advance();
-      
+
       if (first_vis) {
         result.column_start = col.pos;
         first_vis = false;
       }
-      
+
     } else if (is_aggregate_func(peek().type)) {
       // Handle aggregate functions like COUNT(*), SUM(id), etc.
       result.has_aggregate = true;
       Token start_token = peek();
-      
+
       if (first_vis) {
         result.column_start = start_token.pos;
         first_vis = false;
       }
-      
+
       // Parse the aggregate expression
       parse_aggregate_expr(result);
-      if (result.has_error) return;
-      
+      if (result.has_error)
+        return;
+
       // Create column entry for aggregate expression
       Column col;
       col.pos = start_token.pos;
@@ -93,7 +94,7 @@ constexpr void Parser<TokenCount>::parse_columns(ParseResult &result) {
       } else {
         col.len = 1; // fallback
       }
-      
+
       // Check for alias
       if (peek().type == TokenType::As) {
         advance();
@@ -108,7 +109,8 @@ constexpr void Parser<TokenCount>::parse_columns(ParseResult &result) {
         // In SQL, a column alias can be specified without AS
         // Check if this identifier is likely an alias by looking at next token
         TokenType next_type = peek_next().type;
-        // Alias is likely if followed by comma, FROM, end of query, or right parenthesis
+        // Alias is likely if followed by comma, FROM, end of query, or right
+        // parenthesis
         if (next_type == TokenType::Comma || next_type == TokenType::From ||
             next_type == TokenType::End || next_type == TokenType::Rparen) {
           Token alias_token = peek();
@@ -116,11 +118,12 @@ constexpr void Parser<TokenCount>::parse_columns(ParseResult &result) {
           col.alias_len = alias_token.len;
           advance();
         }
-        // Otherwise, leave the identifier for parse_columns to handle as next column
+        // Otherwise, leave the identifier for parse_columns to handle as next
+        // column
       }
-      
+
       result.add_column(col);
-      
+
     } else if (peek().type == TokenType::Identifier ||
                peek().type == TokenType::Number ||
                peek().type == TokenType::String ||
@@ -133,21 +136,28 @@ constexpr void Parser<TokenCount>::parse_columns(ParseResult &result) {
                peek().type == TokenType::Minus) {
       // Handle expression (column, literal, arithmetic expression, etc.)
       parse_select_item(result);
-      if (result.has_error) return;
-      
+      if (result.has_error)
+        return;
+
       if (first_vis) {
         // column_start already set in parse_select_item
         first_vis = false;
       }
-      
+
     } else {
       // No more select items
       break;
     }
-    
+
     // Check for comma to continue with next column
     if (peek().type == TokenType::Comma) {
       advance();
+      if (peek().type == TokenType::From) {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedColumnsAfterComma;
+        result.err_idx = peek().pos;
+        return;
+      }
     } else {
       break;
     }
@@ -160,20 +170,21 @@ constexpr void Parser<TokenCount>::parse_select_item(ParseResult &result) {
   if (result.column_start == 0) {
     result.column_start = peek().pos;
   }
-  
+
   // Create column entry
   Column col;
   col.pos = peek().pos;
   std::size_t start_pos = col.pos;
-  
+
   // Parse unary plus/minus if present
   if (peek().type == TokenType::Plus || peek().type == TokenType::Minus) {
     advance();
   }
-  
+
   // Parse primary expression
   if (peek().type == TokenType::Identifier) {
-    // Check if this is a function call (identifier followed by left parenthesis)
+    // Check if this is a function call (identifier followed by left
+    // parenthesis)
     if (peek_next().type == TokenType::Lparen) {
       // Function call - skip function name and arguments
       advance(); // consume function name
@@ -238,7 +249,7 @@ constexpr void Parser<TokenCount>::parse_select_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
-    result.has_literal = true;  // 标记有字面量
+    result.has_literal = true; // 标记有字面量
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {
       result.semantic_result.add_placeholder(peek().pos);
@@ -265,14 +276,15 @@ constexpr void Parser<TokenCount>::parse_select_item(ParseResult &result) {
     result.err_idx = peek().pos;
     return;
   }
-  
+
   // Check for arithmetic operator
   if (is_arithmetic_operator(peek().type)) {
     result.has_arithmetic = true;
     parse_binary_operator_clause(result);
-    if (result.has_error) return;
+    if (result.has_error)
+      return;
   }
-  
+
   // Calculate column length (approximate)
   // Use last consumed token position and length
   if (!at_end()) {
@@ -281,7 +293,7 @@ constexpr void Parser<TokenCount>::parse_select_item(ParseResult &result) {
   } else {
     col.len = 1; // fallback
   }
-  
+
   // Check for alias
   if (peek().type == TokenType::As) {
     advance();
@@ -296,7 +308,8 @@ constexpr void Parser<TokenCount>::parse_select_item(ParseResult &result) {
     // In SQL, a column alias can be specified without AS
     // Check if this identifier is likely an alias by looking at next token
     TokenType next_type = peek_next().type;
-    // Alias is likely if followed by comma, FROM, end of query, or right parenthesis
+    // Alias is likely if followed by comma, FROM, end of query, or right
+    // parenthesis
     if (next_type == TokenType::Comma || next_type == TokenType::From ||
         next_type == TokenType::End || next_type == TokenType::Rparen) {
       Token alias_token = peek();
@@ -304,9 +317,10 @@ constexpr void Parser<TokenCount>::parse_select_item(ParseResult &result) {
       col.alias_len = alias_token.len;
       advance();
     }
-    // Otherwise, leave the identifier for parse_columns to handle as next column
+    // Otherwise, leave the identifier for parse_columns to handle as next
+    // column
   }
-  
+
   // Add column to result
   result.add_column(col);
 }
@@ -354,6 +368,24 @@ constexpr bool Parser<TokenCount>::is_arithmetic_operator(TokenType type) {
   }
 }
 
+// Helper: check if token is a terminal value (a value that cannot be followed
+// by another value without an operator in between) Includes Identifier because
+// after a column name, the next token must be an operator or terminator
+constexpr bool is_terminal_value(TokenType type) {
+  return type == TokenType::Identifier || type == TokenType::Number ||
+         type == TokenType::String || type == TokenType::True ||
+         type == TokenType::False || type == TokenType::Null ||
+         type == TokenType::PlaceHolder;
+}
+
+// Helper: check if token can start an expression
+constexpr bool is_expression_start(TokenType type) {
+  return type == TokenType::Identifier || type == TokenType::Number ||
+         type == TokenType::String || type == TokenType::PlaceHolder ||
+         type == TokenType::True || type == TokenType::False ||
+         type == TokenType::Null || type == TokenType::Lparen;
+}
+
 template <std::size_t TokenCount>
 constexpr void Parser<TokenCount>::parse_in_clause(ParseResult &result) {
   advance();
@@ -364,25 +396,19 @@ constexpr void Parser<TokenCount>::parse_in_clause(ParseResult &result) {
   }
 
   if (peek().type == TokenType::Select) {
-    // Parse subquery with proper parenthesis nesting
-    int paren_depth = 0;
-    while (!at_end()) {
-      if (peek().type == TokenType::Lparen) {
-        paren_depth++;
-      } else if (peek().type == TokenType::Rparen) {
-        if (paren_depth == 0) {
-          // This is the closing paren of the IN clause
-          break;
-        }
-        paren_depth--;
-      }
-      advance();
+    auto subquery_result = parse_compound_select(true);
+    if (subquery_result.has_error) {
+      result.has_error = true;
+      result.error = subquery_result.error;
+      result.err_idx = subquery_result.err_idx;
+      return;
     }
-    // Now peek() should be the closing Rparen of the IN clause
   } else {
     while (true) {
-      if (peek().type == TokenType::Number || peek().type == TokenType::String ||
-          peek().type == TokenType::PlaceHolder || peek().type == TokenType::Identifier) {
+      if (peek().type == TokenType::Number ||
+          peek().type == TokenType::String ||
+          peek().type == TokenType::PlaceHolder ||
+          peek().type == TokenType::Identifier) {
         // Record placeholder for semantic analysis
         if (peek().type == TokenType::PlaceHolder) {
           result.semantic_result.add_placeholder(peek().pos);
@@ -420,20 +446,27 @@ constexpr void Parser<TokenCount>::parse_between_clause(ParseResult &result) {
     advance();
   }
 
-  while (peek().type != TokenType::And && peek().type != TokenType::End &&
-         peek().type != TokenType::Rparen) {
-    advance();
+  if (peek().type != TokenType::Between) {
+    result.has_error = true;
+    result.error = SQLErrorKind::ExpectedAndInBetweenClause;
+    result.err_idx = peek().pos;
+    return;
   }
+  advance();
 
-  if (peek().type == TokenType::And) {
-    advance();
-  }
+  parse_primary_expr(result);
+  if (result.has_error)
+    return;
 
-  while (peek().type != TokenType::End && peek().type != TokenType::Rparen &&
-         peek().type != TokenType::Group && peek().type != TokenType::Order &&
-         peek().type != TokenType::Limit) {
-    advance();
+  if (peek().type != TokenType::And) {
+    result.has_error = true;
+    result.error = SQLErrorKind::ExpectedAndInBetweenClause;
+    result.err_idx = peek().pos;
+    return;
   }
+  advance();
+
+  parse_primary_expr(result);
 }
 
 template <std::size_t TokenCount>
@@ -480,9 +513,10 @@ constexpr void Parser<TokenCount>::parse_not_expr(ParseResult &result) {
       // This is not standard SQL but allows simple cases
       // We'll just advance and let parse_primary_expr handle the rest
       // Actually, we should not advance here, let parse_primary_expr continue
-      // But we already consumed NOT token, so we need to parse the following expression
-      // For simplicity, we'll just return and let parse_primary_expr handle it
-      // parse_primary_expr will be called after parse_not_expr returns
+      // But we already consumed NOT token, so we need to parse the following
+      // expression For simplicity, we'll just return and let parse_primary_expr
+      // handle it parse_primary_expr will be called after parse_not_expr
+      // returns
     }
     break;
   }
@@ -509,23 +543,17 @@ constexpr void Parser<TokenCount>::parse_exists_clause(ParseResult &result) {
     return;
   }
 
-  // Skip entire subquery until matching ')'
-  int paren_count = 1; // already consumed one '('
-  while (!at_end() && paren_count > 0) {
-    if (peek().type == TokenType::Lparen) {
-      paren_count++;
-    } else if (peek().type == TokenType::Rparen) {
-      paren_count--;
-      if (paren_count == 0) {
-        advance(); // consume the final ')'
-        break;
-      }
-    }
-    advance();
+  auto subquery_result = parse_compound_select(true);
+  if (subquery_result.has_error) {
+    result.has_error = true;
+    result.error = subquery_result.error;
+    result.err_idx = subquery_result.err_idx;
+    return;
   }
 
-  // If we exited due to end of input, it's an error
-  if (paren_count != 0) {
+  if (peek().type == TokenType::Rparen) {
+    advance();
+  } else {
     result.has_error = true;
     result.error = SQLErrorKind::ExpectedRightParen;
     result.err_idx = peek().pos;
@@ -536,9 +564,9 @@ template <std::size_t TokenCount>
 constexpr void Parser<TokenCount>::parse_is_clause(ParseResult &result) {
   // Check left operand before consuming IS
   Token left_operand = previous();
-  
+
   // Check if left operand is invalid for IS NULL / IS NOT NULL
-  if (left_operand.type == TokenType::Number || 
+  if (left_operand.type == TokenType::Number ||
       left_operand.type == TokenType::String ||
       left_operand.type == TokenType::Null ||
       left_operand.type == TokenType::True ||
@@ -548,7 +576,7 @@ constexpr void Parser<TokenCount>::parse_is_clause(ParseResult &result) {
     result.err_idx = left_operand.pos;
     return;
   }
-  
+
   advance();
 
   if (peek().type == TokenType::Null) {
@@ -590,10 +618,11 @@ constexpr void Parser<TokenCount>::parse_group_by_item(ParseResult &result) {
   if (peek().type == TokenType::Plus || peek().type == TokenType::Minus) {
     advance();
   }
-  
+
   // Parse primary expression
   if (peek().type == TokenType::Identifier) {
-    // Check if this is a function call (identifier followed by left parenthesis)
+    // Check if this is a function call (identifier followed by left
+    // parenthesis)
     if (peek_next().type == TokenType::Lparen) {
       // Function call - skip function name and arguments
       advance(); // consume function name
@@ -650,7 +679,7 @@ constexpr void Parser<TokenCount>::parse_group_by_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
-    result.has_literal = true;  // 标记有字面量
+    result.has_literal = true; // 标记有字面量
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {
       result.semantic_result.add_placeholder(peek().pos);
@@ -677,11 +706,12 @@ constexpr void Parser<TokenCount>::parse_group_by_item(ParseResult &result) {
     result.err_idx = peek().pos;
     return;
   }
-  
+
   // Check for arithmetic operator
   if (is_arithmetic_operator(peek().type)) {
     parse_binary_operator_clause(result);
-    if (result.has_error) return;
+    if (result.has_error)
+      return;
   }
 }
 
@@ -698,8 +728,9 @@ constexpr void Parser<TokenCount>::parse_group_by_clause(ParseResult &result) {
   while (true) {
     // Parse one group by expression
     parse_group_by_item(result);
-    if (result.has_error) return;
-    
+    if (result.has_error)
+      return;
+
     // Check for comma to continue with next expression
     if (peek().type == TokenType::Comma) {
       advance();
@@ -711,10 +742,15 @@ constexpr void Parser<TokenCount>::parse_group_by_clause(ParseResult &result) {
 
 template <std::size_t TokenCount>
 constexpr void Parser<TokenCount>::parse_having_clause(ParseResult &result) {
-  advance();
-  while (peek().type != TokenType::Order && peek().type != TokenType::Limit &&
-         peek().type != TokenType::End) {
+  parse_and_expr(result);
+  if (result.has_error)
+    return;
+
+  while (peek().type == TokenType::Or) {
     advance();
+    parse_and_expr(result);
+    if (result.has_error)
+      return;
   }
 }
 
@@ -725,15 +761,16 @@ constexpr void Parser<TokenCount>::parse_order_by_item(ParseResult &result) {
     parse_aggregate_expr(result);
     return;
   }
-  
+
   // Parse unary plus/minus if present
   if (peek().type == TokenType::Plus || peek().type == TokenType::Minus) {
     advance();
   }
-  
+
   // Parse primary expression
   if (peek().type == TokenType::Identifier) {
-    // Check if this is a function call (identifier followed by left parenthesis)
+    // Check if this is a function call (identifier followed by left
+    // parenthesis)
     if (peek_next().type == TokenType::Lparen) {
       // Function call - skip function name and arguments
       advance(); // consume function name
@@ -790,7 +827,7 @@ constexpr void Parser<TokenCount>::parse_order_by_item(ParseResult &result) {
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
-    result.has_literal = true;  // 标记有字面量
+    result.has_literal = true; // 标记有字面量
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {
       result.semantic_result.add_placeholder(peek().pos);
@@ -817,11 +854,12 @@ constexpr void Parser<TokenCount>::parse_order_by_item(ParseResult &result) {
     result.err_idx = peek().pos;
     return;
   }
-  
+
   // Check for arithmetic operator
   if (is_arithmetic_operator(peek().type)) {
     parse_binary_operator_clause(result);
-    if (result.has_error) return;
+    if (result.has_error)
+      return;
   }
 }
 
@@ -834,16 +872,18 @@ constexpr void Parser<TokenCount>::parse_order_by_clause(ParseResult &result) {
     return;
   }
 
-  while (peek().type != TokenType::Limit && peek().type != TokenType::End) {
+  while (peek().type != TokenType::Limit && peek().type != TokenType::Offset &&
+         peek().type != TokenType::End) {
     // Parse one order by expression
     parse_order_by_item(result);
-    if (result.has_error) return;
-    
+    if (result.has_error)
+      return;
+
     // Check for ASC/DESC
     if (peek().type == TokenType::Asc || peek().type == TokenType::Desc) {
       advance();
     }
-    
+
     // Check for comma to continue with next order item
     if (peek().type == TokenType::Comma) {
       advance();
@@ -854,25 +894,26 @@ constexpr void Parser<TokenCount>::parse_order_by_clause(ParseResult &result) {
 }
 
 template <std::size_t TokenCount>
-constexpr void Parser<TokenCount>::parse_binary_operator_clause(
-    ParseResult &result) {
+constexpr void
+Parser<TokenCount>::parse_binary_operator_clause(ParseResult &result) {
   // Skip the binary operator token
   advance();
-  
+
   // Check if we have a valid operand after the binary operator
-  // Valid operand starters: identifier, number, string, placeholder, boolean, NULL, left paren, unary plus/minus
+  // Valid operand starters: identifier, number, string, placeholder, boolean,
+  // NULL, left paren, unary plus/minus
   bool has_operand = false;
-  
+
   // Handle unary plus/minus
   if (peek().type == TokenType::Plus || peek().type == TokenType::Minus) {
     advance();
   }
-  
+
   // Parse the operand
   if (peek().type == TokenType::Identifier) {
     has_operand = true;
     advance();
-    
+
     // Skip table prefix if present
     while (peek().type == TokenType::Dot) {
       advance();
@@ -887,7 +928,7 @@ constexpr void Parser<TokenCount>::parse_binary_operator_clause(
              peek().type == TokenType::False ||
              peek().type == TokenType::Null) {
     // Literal value
-    result.has_literal = true;  // 标记有字面量
+    result.has_literal = true; // 标记有字面量
     has_operand = true;
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {
@@ -908,7 +949,7 @@ constexpr void Parser<TokenCount>::parse_binary_operator_clause(
       advance();
     }
   }
-  
+
   // If no valid operand found after binary operator, report error
   if (!has_operand) {
     result.has_error = true;
@@ -916,29 +957,27 @@ constexpr void Parser<TokenCount>::parse_binary_operator_clause(
     result.err_idx = peek().pos;
     return;
   }
-  
+
   // Check for chained arithmetic operator (e.g., a + b + c)
   if (is_arithmetic_operator(peek().type)) {
     result.has_arithmetic = true;
     advance();
-    
+
     // Check for unary plus/minus before operand
     if (peek().type == TokenType::Plus || peek().type == TokenType::Minus) {
       advance();
     }
-    
+
     // Parse the next operand for chained operator
-    // Valid operand starters: identifier, number, string, placeholder, boolean, NULL, left paren
+    // Valid operand starters: identifier, number, string, placeholder, boolean,
+    // NULL, left paren
     if (peek().type == TokenType::Identifier ||
-        peek().type == TokenType::Number ||
-        peek().type == TokenType::String ||
+        peek().type == TokenType::Number || peek().type == TokenType::String ||
         peek().type == TokenType::PlaceHolder ||
-        peek().type == TokenType::True ||
-        peek().type == TokenType::False ||
-        peek().type == TokenType::Null ||
-        peek().type == TokenType::Lparen) {
+        peek().type == TokenType::True || peek().type == TokenType::False ||
+        peek().type == TokenType::Null || peek().type == TokenType::Lparen) {
       advance();
-      
+
       // If it's a left parenthesis, skip the entire parenthesized expression
       if (previous().type == TokenType::Lparen) {
         int paren_depth = 1;
@@ -967,7 +1006,8 @@ constexpr void Parser<TokenCount>::parse_arithmetic_expr(ParseResult &result) {
     advance();
   }
 
-  if (peek().type == TokenType::Number || peek().type == TokenType::PlaceHolder) {
+  if (peek().type == TokenType::Number ||
+      peek().type == TokenType::PlaceHolder) {
     // Record placeholder for semantic analysis
     if (peek().type == TokenType::PlaceHolder) {
       result.semantic_result.add_placeholder(peek().pos);
@@ -995,38 +1035,39 @@ constexpr void Parser<TokenCount>::parse_primary_expr(ParseResult &result) {
     parse_not_expr(result);
     return;
   }
-  
+
   if (peek().type == TokenType::Exists) {
     parse_exists_clause(result);
     return;
   }
-  
+
   if (peek().type == TokenType::In) {
     parse_in_clause(result);
     return;
   }
-  
+
   if (peek().type == TokenType::Like) {
     parse_like_clause(result);
     return;
   }
-  
+
   if (peek().type == TokenType::Between) {
     parse_between_clause(result);
     return;
   }
-  
+
   if (peek().type == TokenType::Is) {
     parse_is_clause(result);
     return;
   }
-  
-  // Check for missing operator: id NULL, id 1, id 'text', id other_column, id (SELECT...), etc.
-  // But allow id NOT BETWEEN, id NOT IN, id NOT LIKE, id NOT EXISTS
+
+  // Check for missing operator: id NULL, id 1, id 'text', id other_column, id
+  // (SELECT...), etc. But allow id NOT BETWEEN, id NOT IN, id NOT LIKE, id NOT
+  // EXISTS
   if (peek().type == TokenType::Identifier) {
     TokenType next_type = peek_next().type;
     bool should_reject = false;
-    
+
     if (next_type == TokenType::Number || next_type == TokenType::String ||
         next_type == TokenType::PlaceHolder || next_type == TokenType::True ||
         next_type == TokenType::False || next_type == TokenType::Null ||
@@ -1048,7 +1089,7 @@ constexpr void Parser<TokenCount>::parse_primary_expr(ParseResult &result) {
         should_reject = true;
       }
     }
-    
+
     if (should_reject) {
       result.has_error = true;
       result.error = SQLErrorKind::MissingOperator;
@@ -1056,68 +1097,91 @@ constexpr void Parser<TokenCount>::parse_primary_expr(ParseResult &result) {
       return;
     }
   }
-  
+
+  // If no expression to parse (e.g., AND/OR at end of input, or unexpected
+  // terminator)
+  if (peek().type == TokenType::End || peek().type == TokenType::And ||
+      peek().type == TokenType::Or || peek().type == TokenType::Group ||
+      peek().type == TokenType::Order || peek().type == TokenType::Limit ||
+      peek().type == TokenType::Offset || peek().type == TokenType::Rparen) {
+    result.has_error = true;
+    result.error = SQLErrorKind::ExpectedExpression;
+    result.err_idx = peek().pos;
+    return;
+  }
+
   // Default: parse expression with possible operators
   while (peek().type != TokenType::And && peek().type != TokenType::Or &&
          peek().type != TokenType::End && peek().type != TokenType::Group &&
          peek().type != TokenType::Order && peek().type != TokenType::Limit &&
-         peek().type != TokenType::Rparen) {
-    
+         peek().type != TokenType::Offset && peek().type != TokenType::Rparen) {
+
     // Check for operators that need special handling
     if (peek().type == TokenType::In) {
       parse_in_clause(result);
-      if (result.has_error) return;
+      if (result.has_error)
+        return;
       continue;
     }
-    
+
     if (peek().type == TokenType::Like) {
       parse_like_clause(result);
-      if (result.has_error) return;
+      if (result.has_error)
+        return;
       continue;
     }
-    
+
     if (peek().type == TokenType::Between) {
       parse_between_clause(result);
-      if (result.has_error) return;
+      if (result.has_error)
+        return;
       continue;
     }
-    
+
     if (peek().type == TokenType::Is) {
       parse_is_clause(result);
-      if (result.has_error) return;
+      if (result.has_error)
+        return;
       continue;
     }
-    
+
     // Check for comparison operators
     if (is_operator(peek().type)) {
       // Save operator type for semantic checks
       TokenType op = peek().type;
       // Skip the operator
       advance();
-      
-      // Parse the right-hand side
-      if (peek().type == TokenType::String || peek().type == TokenType::Number ||
-          peek().type == TokenType::PlaceHolder || peek().type == TokenType::True ||
-          peek().type == TokenType::False || peek().type == TokenType::Identifier ||
+
+      // Check if a valid RHS follows the operator
+      bool has_rhs = false;
+
+      // Case 1: Simple value as RHS
+      if (peek().type == TokenType::String ||
+          peek().type == TokenType::Number ||
+          peek().type == TokenType::PlaceHolder ||
+          peek().type == TokenType::True || peek().type == TokenType::False ||
+          peek().type == TokenType::Identifier ||
           peek().type == TokenType::Null) {
-        
+        has_rhs = true;
+
         // Semantic check: NULL cannot be compared with =, !=, <, >, <=, >=
-        if (peek().type == TokenType::Null && 
-            (op == TokenType::Eq || op == TokenType::Ne || op == TokenType::Lt ||
-             op == TokenType::Gt || op == TokenType::Le || op == TokenType::Ge)) {
+        if (peek().type == TokenType::Null &&
+            (op == TokenType::Eq || op == TokenType::Ne ||
+             op == TokenType::Lt || op == TokenType::Gt ||
+             op == TokenType::Le || op == TokenType::Ge)) {
           result.has_error = true;
           result.error = SQLErrorKind::NullComparisonNotAllowed;
           result.err_idx = peek().pos;
           return;
         }
-        
+
         // Record placeholder for semantic analysis
         if (peek().type == TokenType::PlaceHolder) {
           result.semantic_result.add_placeholder(peek().pos);
         }
-        
+
         advance();
-        
+
         // Skip any dot notation (table.column)
         while (peek().type == TokenType::Dot) {
           advance();
@@ -1125,18 +1189,57 @@ constexpr void Parser<TokenCount>::parse_primary_expr(ParseResult &result) {
             advance();
           }
         }
+
+        // After consuming operator RHS, check for missing operator
+        // (e.g., "x > 0 y" or "x > 0 1")
+        if (is_expression_start(peek().type)) {
+          result.has_error = true;
+          result.error = SQLErrorKind::MissingOperator;
+          result.err_idx = peek().pos;
+          return;
+        }
+      } else if (peek().type == TokenType::Lparen ||
+                 peek().type == TokenType::Plus ||
+                 peek().type == TokenType::Minus) {
+        // Case 2: Subquery/parenthesized expression or unary sign as RHS
+        // These will be handled by the while loop's general mechanism
+        has_rhs = true;
+      }
+
+      // If no valid RHS follows the operator, it's an error
+      if (!has_rhs) {
+        result.has_error = true;
+        result.error = SQLErrorKind::ExpectedLiteralOrPlaceHolder;
+        result.err_idx = peek().pos;
+        return;
       }
       continue;
     }
-    
+
+    if (is_aggregate_func(peek().type)) {
+      parse_aggregate_expr(result);
+      if (result.has_error)
+        return;
+      continue;
+    }
+
     // For arithmetic operators, just skip for now
     if (is_arithmetic_operator(peek().type)) {
       advance();
       continue;
     }
-    
+
     // Otherwise, consume the token
+    TokenType consumed = peek().type;
     advance();
+
+    // Check for missing operator between consecutive values (e.g., "AND 1 1")
+    if (is_terminal_value(consumed) && is_expression_start(peek().type)) {
+      result.has_error = true;
+      result.error = SQLErrorKind::MissingOperator;
+      result.err_idx = peek().pos;
+      return;
+    }
   }
 }
 

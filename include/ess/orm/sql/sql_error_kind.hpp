@@ -8,6 +8,7 @@ enum class SQLErrorKind : uint8_t {
   InvalidToken,
   UnknownBeginning,
   ExpectedStarOrColumns,
+  ExpectedColumnsAfterComma,
   ExpectedFrom,
   ExpectedTableAfterFrom,
   ExpectedIdentifier,
@@ -58,6 +59,7 @@ enum class SQLErrorKind : uint8_t {
   AggregateWithoutGroupBy,  // 聚合缺少GROUP BY
   IncompleteStatement,      // 语句不完整
   InvalidNullComparison,    // 无效的NULL比较
+  ExpectedExpression,       // 期望表达式但未找到
 
   UnknownError,
 };

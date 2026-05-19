@@ -36,3 +36,17 @@ add_test(NAME runtime_tests COMMAND test_runtime)
 # Enable test discovery
 include(GoogleTest)
 gtest_discover_tests(test_runtime)
+
+# Compile-time SQL parser edge case tests (static_assert based)
+add_executable(sql_parser_edge_test
+    sql_parser_edge_test.cpp
+)
+target_compile_features(sql_parser_edge_test PRIVATE cxx_std_20)
+target_include_directories(sql_parser_edge_test
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/configs
+)
+add_test(NAME sql_parser_edge_test
+    COMMAND sql_parser_edge_test
+)

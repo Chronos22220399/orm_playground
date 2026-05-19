@@ -34,7 +34,80 @@ struct Goods {
 };
 
 int main() {
-  //
+  Context::instance().init();
+
+  // ===== Parser validation tests (compile-time) =====
+  // HAVING clause with aggregate expression
+  query<
+      "SELECT id FROM goods WHERE id = 10 GROUP BY id HAVING COUNT(id) > 0"_sql,
+      default_db>();
+
+  // BETWEEN
+  query<"SELECT * FROM goods WHERE price BETWEEN 10 AND 20"_sql>();
+
+  // NOT BETWEEN
+  query<"SELECT * FROM goods WHERE price NOT BETWEEN 10 AND 20"_sql>();
+
+  // IN subquery
+  query<"SELECT * FROM goods WHERE id IN (SELECT id FROM goods)"_sql>();
+
+  // NOT IN subquery
+  query<"SELECT * FROM goods WHERE id NOT IN (SELECT id FROM goods)"_sql>();
+
+  // EXISTS
+  query<"SELECT * FROM goods WHERE EXISTS (SELECT 1 FROM goods)"_sql>();
+
+  // NOT EXISTS
+  query<"SELECT * FROM goods WHERE NOT EXISTS (SELECT 1 FROM goods)"_sql>();
+
+  cout << "=== All parser validation tests passed ===" << endl;
+  cout << "=== Complex Query Example ===" << endl;
+
+  // Insert sample data
+  query<"INSERT INTO goods (title, price, stock, status, enabled) VALUES "
+        "('Laptop', 999.99, 50, 0, 1)"_sql>();
+  query<"INSERT INTO goods (title, price, stock, status, enabled) VALUES "
+        "('Phone', 599.99, 100, 0, 1)"_sql>();
+  query<"INSERT INTO goods (title, price, stock, status, enabled) VALUES "
+        "('Tablet', 399.99, 0, 1, 0)"_sql>();
+
+  // Parameterized query with placeholders + typed Goods result
+  auto res = query<Goods,
+                   "SELECT * FROM goods WHERE price > ? AND enabled = ? "
+                   "ORDER BY price DESC LIMIT 10 OFFSET 0"_sql,
+                   default_db>(500.0, true);
+
+  cout << "Goods with price > 500 and enabled:" << endl;
+  for (auto &g : res) {
+    cout << "  id=" << g.id << " title=" << g.title << " price=" << g.price
+         << endl;
+  }
+
+  // Aggregation query without table type
+  auto stat =
+      query<"SELECT COUNT(*) AS cnt, AVG(price) AS avg_price FROM goods "
+            "WHERE stock > ?"_sql,
+            default_db>(0);
+  if (!stat.empty()) {
+    cout << "Total active goods: " << static_cast<int>(stat[0]["cnt"])
+         << ", avg price: " << static_cast<double>(stat[0]["avg_price"])
+         << endl;
+  }
+
+  // Transaction with typed query and rollback
+  try {
+    transaction<core::Write>([&](auto &tx) {
+      tx.template query<Goods,
+                        "UPDATE goods SET stock = stock + ? WHERE id = ?"_sql>(
+          10, 1);
+      tx.template query<Goods,
+                        "UPDATE goods SET stock = stock + ? WHERE id = ?"_sql>(
+          5, 2);
+    });
+  } catch (const exception &e) {
+    cerr << "Transaction failed: " << e.what() << endl;
+  }
+
   return 0;
 }
 
@@ -160,7 +233,8 @@ void test_queries_with_table_type() {
   // 7. 表别名（带表类型允许，因为列名不变）
   cout << "\n7. 表别名（带表类型允许）:" << endl;
   query<Goods, "SELECT * FROM goods g"_sql>();
-  query<Goods, "SELECT g.id FROM goods g WHERE g.id > 0 AND "_sql>();
+  query<Goods,
+        "SELECT g.id FROM goods g WHERE g.id > 0 LIMIT 10 OFFSET 10"_sql>();
 
   // 8. 嵌套查询（带表类型允许，如果只返回Goods表的列）
   cout << "\n8. 嵌套查询（带表类型允许）:" << endl;

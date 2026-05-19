@@ -197,6 +197,8 @@ constexpr ParseResult Parser<TokenCount>::parse_select(bool allow_rparen_end) {
       return result;
     }
 
+    advance();
+    result.has_left_column = false;
     parse_having_clause(result);
     if (result.has_error)
       return result;
